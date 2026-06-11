@@ -1,6 +1,7 @@
 const { platform } = require('os');
+const { EXECUTION_HOST } = require('./config');
 
-if (platform() === 'win32') {
+if (platform() === 'win32' || EXECUTION_HOST === 'local') {
     module.exports = require('./sandbox_win');
 } else {
     const Axios = require('axios');

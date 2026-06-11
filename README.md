@@ -31,7 +31,7 @@ The install script will:
 
 The start script will:
 
-- start the `criyle/go-judge:latest` Docker container
+- use the local execution backend by default
 - restart the `hydro-judge-worker` service
 - health check `http://127.0.0.1:5000/status`
 - print the `Hydro_Judge 地址` and `Token` that should be copied into getcode
@@ -70,7 +70,11 @@ JUDGE_PORT=5000
 JUDGE_TOKEN="auto-generated-if-empty"
 JUDGE_DATA_DIR="/var/oj/judge-data"
 SERVICE_NAME="hydro-judge-worker"
+EXECUTION_HOST="local"
 ```
+
+`EXECUTION_HOST=local` uses gcc/g++/python3 installed on the Ubuntu host. To use
+an external go-judge service instead, set `EXECUTION_HOST=http://localhost:5050`.
 
 To manually set or rotate the token:
 

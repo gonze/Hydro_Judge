@@ -18,7 +18,7 @@ const config = {
     SYSTEM_PROCESS_LIMIT: 32,
     RETRY_DELAY_SEC: 15,
     TEMP_DIR: path.resolve(os.tmpdir(), 'hydro', 'judge'),
-    EXECUTION_HOST: IS_WINDOWS ? 'local' : 'http://localhost:5050',
+    EXECUTION_HOST: 'local',
     CONFIG: null,
     LANGS: null,
     changeDefault(name, from, to) {

@@ -5,6 +5,7 @@ const os = require('os');
 const {
     SYSTEM_MEMORY_LIMIT_MB, SYSTEM_PROCESS_LIMIT, SYSTEM_TIME_LIMIT_MS,
 } = require('./config');
+const { SystemError } = require('./error');
 const status = require('./status');
 
 const fsp = fs.promises;

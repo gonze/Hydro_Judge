@@ -28,6 +28,7 @@ JUDGE_PORT=${JUDGE_PORT}
 JUDGE_TOKEN=${JUDGE_TOKEN}
 JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 SERVICE_NAME=${SERVICE_NAME}
+EXECUTION_HOST=${EXECUTION_HOST}
 EOF
 }
 
@@ -35,6 +36,7 @@ load_env_file
 JUDGE_PORT="${JUDGE_PORT:-5000}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
+EXECUTION_HOST="${EXECUTION_HOST:-local}"
 if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; then
   JUDGE_TOKEN="$(generate_token)"
   echo "Generated new JUDGE_TOKEN and saved it to ${ENV_FILE}."
@@ -82,6 +84,7 @@ WorkingDirectory=${INSTALL_DIR}
 Environment=JUDGE_PORT=${JUDGE_PORT}
 Environment=JUDGE_TOKEN=${JUDGE_TOKEN}
 Environment=JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
+Environment=EXECUTION_HOST=${EXECUTION_HOST}
 ExecStart=/usr/bin/node judge/server.js
 Restart=always
 RestartSec=3
