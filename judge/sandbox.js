@@ -98,6 +98,16 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
             // FIXME request body larger than maxBodyLength limit
             throw new SystemError('Cannot connect to sandbox service ', e.message);
         }
+        log.info('go-judge run result', {
+            execute,
+            status: result.status,
+            exitStatus: result.exitStatus,
+            error: result.error || '',
+            time: result.time,
+            memory: result.memory,
+            files: result.files ? Object.keys(result.files) : [],
+            fileIds: result.fileIds || {},
+        });
         // FIXME: Signalled?
         const ret = {
             status: statusMap[result.status] || STATUS_ACCEPTED,
@@ -113,7 +123,7 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
         if (params.stdout) await fsp.writeFile(params.stdout, result.files.stdout || '');
         else ret.stdout = result.files.stdout || '';
         if (params.stderr) await fsp.writeFile(params.stderr, result.files.stderr || '');
-        else ret.stderr = result.files.stderr || '';
+        else ret.stderr = result.files.stderr || result.error || '';
         if (result.error) {
             ret.error = result.error;
         }

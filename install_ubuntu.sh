@@ -29,6 +29,8 @@ JUDGE_TOKEN=${JUDGE_TOKEN}
 JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 SERVICE_NAME=${SERVICE_NAME}
 EXECUTION_HOST=${EXECUTION_HOST}
+GO_JUDGE_IMAGE=${GO_JUDGE_IMAGE}
+GO_JUDGE_CONTAINER=${GO_JUDGE_CONTAINER}
 EOF
 }
 
@@ -37,6 +39,8 @@ JUDGE_PORT="${JUDGE_PORT:-5000}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
 EXECUTION_HOST="${EXECUTION_HOST:-local}"
+GO_JUDGE_IMAGE="${GO_JUDGE_IMAGE:-criyle/go-judge:latest}"
+GO_JUDGE_CONTAINER="${GO_JUDGE_CONTAINER:-go-judge}"
 if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; then
   JUDGE_TOKEN="$(generate_token)"
   echo "Generated new JUDGE_TOKEN and saved it to ${ENV_FILE}."

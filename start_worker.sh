@@ -30,6 +30,8 @@ JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 FILES_DIR=${FILES_DIR}
 SERVICE_NAME=${SERVICE_NAME}
 EXECUTION_HOST=${EXECUTION_HOST}
+GO_JUDGE_IMAGE=${GO_JUDGE_IMAGE}
+GO_JUDGE_CONTAINER=${GO_JUDGE_CONTAINER}
 EOF
 }
 
@@ -71,15 +73,31 @@ JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
 FILES_DIR="${FILES_DIR:-${HOME}/.cache/hydro/files/judge}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
 EXECUTION_HOST="${EXECUTION_HOST:-local}"
+GO_JUDGE_IMAGE="${GO_JUDGE_IMAGE:-criyle/go-judge:latest}"
+GO_JUDGE_CONTAINER="${GO_JUDGE_CONTAINER:-go-judge}"
 if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; then
   JUDGE_TOKEN="$(generate_token)"
   echo "Generated new JUDGE_TOKEN and saved it to ${ENV_FILE}."
 fi
 write_env_file
 
-GO_JUDGE_IMAGE="${GO_JUDGE_IMAGE:-criyle/go-judge:latest}"
-GO_JUDGE_CONTAINER="${GO_JUDGE_CONTAINER:-go-judge}"
 TESTLIB_SOURCE="${INSTALL_DIR}/examples/testlib.h"
+
+check_go_judge_toolchain() {
+  if ! sudo docker exec "$GO_JUDGE_CONTAINER" sh -lc 'command -v g++ >/dev/null 2>&1'; then
+    cat >&2 <<EOF
+go-judge container is running, but g++ was not found inside it.
+The default criyle/go-judge image may not include contest compilers.
+
+Use local mode:
+  EXECUTION_HOST=local ./start_worker.sh
+
+Or run a custom go-judge image that includes g++/gcc/python3/java and set:
+  GO_JUDGE_IMAGE=your-go-judge-with-compilers:latest EXECUTION_HOST=http://127.0.0.1:5050 ./start_worker.sh
+EOF
+    exit 1
+  fi
+}
 
 if ! command -v sudo >/dev/null 2>&1; then
   echo "sudo is required. Please run this script on Ubuntu with sudo access." >&2
@@ -100,6 +118,7 @@ else
       --network host \
       "$GO_JUDGE_IMAGE" >/dev/null
   fi
+  check_go_judge_toolchain
 fi
 
 echo "[2/4] Ensuring judge data and support files exist..."

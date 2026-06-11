@@ -15,8 +15,11 @@ On a clean Ubuntu server with `git` installed:
 ```bash
 git clone <your Hydro_Judge repo url> Hydro_Judge
 cd Hydro_Judge
-chmod +x install_ubuntu.sh start_worker.sh
-chmod +x update_worker.sh
+chmod +x build_go_judge_image.sh install_ubuntu.sh start_worker.sh update_worker.sh
+
+# Optional but recommended when using go-judge:
+# build a local go-judge image that includes gcc/g++/python3.
+./build_go_judge_image.sh
 
 ./install_ubuntu.sh
 ./start_worker.sh
@@ -28,6 +31,20 @@ The install script will:
 - install npm dependencies
 - create `/var/oj/judge-data`
 - write and enable the `hydro-judge-worker` systemd service
+
+The go-judge image script will:
+
+- install and start Docker if it is missing
+- build `local/go-judge:cpp-python` from `criyle/go-judge:latest`
+- install `gcc`, `g++`, `python3`, `python3-pip`, `libc6-dev`, and `make`
+- verify the compiler toolchain inside the image
+- write these settings to `.env`:
+  - `EXECUTION_HOST=http://127.0.0.1:5050`
+  - `GO_JUDGE_IMAGE=local/go-judge:cpp-python`
+
+Run `./build_go_judge_image.sh` before `./install_ubuntu.sh` if you want
+Hydro_Judge to use the go-judge backend. If you prefer the simpler host-local
+backend, skip this script and keep `EXECUTION_HOST=local`.
 
 The start script will:
 
@@ -75,6 +92,23 @@ EXECUTION_HOST="local"
 
 `EXECUTION_HOST=local` uses gcc/g++/python3 installed on the Ubuntu host. To use
 an external go-judge service instead, set `EXECUTION_HOST=http://localhost:5050`.
+For the bundled local go-judge container, build the custom image first:
+
+```bash
+./build_go_judge_image.sh
+./install_ubuntu.sh
+./start_worker.sh
+```
+
+Useful options:
+
+```bash
+# Custom output image name
+GO_JUDGE_IMAGE=local/go-judge:cpp-python ./build_go_judge_image.sh
+
+# Include Java 17 as well
+INSTALL_JAVA=1 ./build_go_judge_image.sh
+```
 
 To manually set or rotate the token:
 
