@@ -68,6 +68,9 @@ async function copyInFile(filePath, content) {
     } else if (content.fileId) {
         await fs.copy(content.fileId, filePath);
     }
+    if (process.platform !== 'win32') {
+        await fsp.chmod(filePath, 0o755).catch(() => {});
+    }
 }
 
 async function run(execute, params = {}) {
@@ -102,6 +105,7 @@ async function run(execute, params = {}) {
         let timeUsage = 0;
         let memoryUsage = 0;
         let exitCode = 0;
+        let spawnError = '';
         let timedOut = false;
         let outputLimited = false;
         const outputLimit = 1024 * 1024 * 16;
@@ -157,6 +161,7 @@ async function run(execute, params = {}) {
 
             child.on('error', (err) => {
                 clearTimeout(timeout);
+                spawnError = err.message;
                 stderrData += `Spawn error: ${err.message}`;
                 exitCode = -1;
                 resolve();
@@ -181,6 +186,9 @@ async function run(execute, params = {}) {
             if (await fs.pathExists(filePath)) {
                 const cachePath = path.join(CACHE_DIR, `${Date.now()}-${Math.random().toString(16).slice(2)}-${path.basename(fileName)}`);
                 await fs.copy(filePath, cachePath);
+                if (process.platform !== 'win32') {
+                    await fsp.chmod(cachePath, 0o755).catch(() => {});
+                }
                 fileIds[fileName] = cachePath;
             }
         }
@@ -207,6 +215,7 @@ async function run(execute, params = {}) {
             memory_usage_kb: memoryUsage,
             files: resultFiles,
             code: exitCode,
+            error: spawnError,
             stdout: stdoutPath ? undefined : stdoutData,
             stderr: stderrPath ? undefined : stderrData,
             fileIds,

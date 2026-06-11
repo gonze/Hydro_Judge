@@ -19,6 +19,24 @@ const Score = {
     min: Math.min,
 };
 
+function pushJudgeMessage(ctx, message) {
+    if (!message) return;
+    if (!ctx.judge_messages) ctx.judge_messages = [];
+    if (ctx.judge_messages.length < 20) ctx.judge_messages.push(message);
+}
+
+function runtimeMessage(code, res) {
+    const stderr = ((res.files && res.files.stderr) || res.stderr || '').trim();
+    const spawnError = (res.error || '').trim();
+    if (spawnError) return `Runtime Error: ${spawnError}`;
+    if (stderr) return stderr.slice(0, 4000);
+    if (typeof code === 'number') {
+        if (code >= 0 && code < 32 && signals[code]) return signals[code];
+        return `Program exited with code ${code}.`;
+    }
+    return 'Runtime Error';
+}
+
 function judgeCase(c) {
     return async (ctx, ctxSubtask) => {
         const { filename } = ctx.config;
@@ -70,6 +88,8 @@ function judgeCase(c) {
             if (code < 32) message = signals[code];
             else message = `您的程序返回了 ${code}.`;
         }
+        if (status === STATUS_RUNTIME_ERROR && code) message = runtimeMessage(code, res);
+        if (message) pushJudgeMessage(ctx, `Case ${c.id}: ${message}`);
         ctxSubtask.score = Score[ctxSubtask.subtask.type](ctxSubtask.score, score);
         ctxSubtask.status = Math.max(ctxSubtask.status, status);
         ctx.total_time_usage_ms += time_usage_ms;
@@ -143,15 +163,18 @@ exports.judge = async (ctx) => {
     ctx.total_score = 0;
     ctx.total_memory_usage_kb = 0;
     ctx.total_time_usage_ms = 0;
+    ctx.judge_messages = [];
     ctx.queue = new Queue({ concurrency: ctx.config.concurrency || 2 });
     for (const sid in ctx.config.subtasks) tasks.push(judgeSubtask(ctx.config.subtasks[sid])(ctx));
     await Promise.all(tasks);
     ctx.stat.done = new Date();
-    ctx.next({ judge_text: JSON.stringify(ctx.stat) });
+    const judgeText = ctx.judge_messages.length ? ctx.judge_messages.join('\n') : JSON.stringify(ctx.stat);
+    ctx.next({ judge_text: judgeText });
     ctx.end({
         status: ctx.total_status,
         score: ctx.total_score,
         time_ms: Math.floor(ctx.total_time_usage_ms * 1000000) / 1000000,
         memory_kb: ctx.total_memory_usage_kb,
+        judge_text: judgeText,
     });
 };
