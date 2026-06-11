@@ -85,6 +85,12 @@ class JudgeContext {
     constructor(request, taskId) {
         this.request = request;
         this.taskId = taskId;
+        this.rid = request.rid;
+        this.pid = request.pid;
+        this.lang = request.lang;
+        this.code = request.code;
+        this.data = request.data;
+        this.data_id = request.data_id;
         this.tmpdir = path.resolve(os.tmpdir(), 'hydro', 'judge', request.rid);
         fs.ensureDirSync(this.tmpdir);
         this.nextId = 1;
@@ -95,6 +101,9 @@ class JudgeContext {
         this.total_memory_usage_kb = 0;
         this.stat = { receive: new Date() };
         this.clean = [];
+        this.next = this.next.bind(this);
+        this.end = this.end.bind(this);
+        this.fail = this.fail.bind(this);
     }
 
     next(data) {
@@ -263,7 +272,7 @@ async function handleJudgeSubmit(request, response) {
         ctx.config = await readCases(
             testdataPath,
             { detail: true },
-            { next: ctx.next.bind(ctx) },
+            { next: ctx.next },
         );
 
         ctx.config.concurrency = 2;
