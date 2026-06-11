@@ -24,12 +24,27 @@ async function compile(lang, code, target, copyIn, next) {
     if (info.type === 'compiler') {
         copyIn[info.code_file] = { content: code };
         const cachedTargets = IS_WINDOWS ? [target, `${target}.exe`] : [target];
+        log.info('Compile start', {
+            lang,
+            target,
+            command: info.compile.replace(/\$\{name\}/g, target),
+            code_file: info.code_file,
+            cachedTargets,
+        });
         const {
             status, stdout, stderr, fileIds = {},
         } = await run(
             info.compile.replace(/\$\{name\}/g, target),
             { copyIn, copyOutCached: cachedTargets },
         );
+        log.info('Compile finished', {
+            lang,
+            target,
+            status,
+            fileIds,
+            stdout: stdout ? stdout.slice(0, 1000) : '',
+            stderr: stderr ? stderr.slice(0, 1000) : '',
+        });
         if (status !== STATUS_ACCEPTED) throw new CompileError({ status, stdout, stderr });
         const outputName = cachedTargets.find((name) => fileIds[name]);
         if (!outputName) throw new CompileError({ stderr: 'Executable file was not generated.' });

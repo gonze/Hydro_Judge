@@ -12,6 +12,7 @@ const { run } = require('../sandbox');
 const compile = require('../compile');
 const signals = require('../signals');
 const { check, compileChecker } = require('../check');
+const log = require('../log');
 
 const Score = {
     sum: (a, b) => (a + b),
@@ -46,8 +47,17 @@ function judgeCase(c) {
         const stdin = filename ? null : c.input;
         const stdout = path.resolve(ctx.tmpdir, `${c.id}.out`);
         const stderr = path.resolve(ctx.tmpdir, `${c.id}.err`);
+        const executeCommand = ctx.execute.execute.replace(/\$\{name\}/g, 'code');
+        log.info('Judge case start', {
+            rid: ctx.rid,
+            pid: ctx.pid,
+            case: c.id,
+            execute: executeCommand,
+            copyIn: Object.keys(copyIn),
+            filename: filename || '',
+        });
         const res = await run(
-            ctx.execute.execute.replace(/\$\{name\}/g, 'code').replace(/\$\{dir\}/g, ctx.tmpdir),
+            executeCommand,
             {
                 stdin,
                 stdout: filename ? null : stdout,

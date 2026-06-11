@@ -7,6 +7,7 @@ const {
 } = require('./config');
 const { SystemError } = require('./error');
 const status = require('./status');
+const log = require('./log');
 
 const fsp = fs.promises;
 const CACHE_DIR = path.join(os.tmpdir(), 'hydrojudge-cache');
@@ -91,12 +92,29 @@ async function run(execute, params = {}) {
         for (const [name, content] of Object.entries(copyIn)) {
             const filePath = path.join(tempDir, name);
             await copyInFile(filePath, content);
+            log.info('Sandbox copyIn', {
+                name,
+                target: filePath,
+                source: content && (content.src || content.fileId || ''),
+                exists: await fs.pathExists(filePath),
+            });
         }
 
         const commandDir = tempDir.replace(/\\/g, '/');
         const cmdParts = parseCmd(execute.replace(/\$\{dir\}/g, commandDir));
         const command = cmdParts[0];
         const args = cmdParts.slice(1);
+        log.info('Sandbox run start', {
+            execute,
+            command,
+            args,
+            cwd: tempDir,
+            copyIn: Object.keys(copyIn),
+            copyOut,
+            copyOutCached,
+            time_limit_ms,
+            memory_limit_mb,
+        });
 
         const stdinContent = await resolveInput(stdin);
 
@@ -220,6 +238,19 @@ async function run(execute, params = {}) {
             stderr: stderrPath ? undefined : stderrData,
             fileIds,
         };
+        log.info('Sandbox run finished', {
+            command,
+            args,
+            cwd: tempDir,
+            status: statusCode,
+            code: exitCode,
+            error: spawnError,
+            time_usage_ms: timeUsage,
+            stdout: stdoutData ? stdoutData.slice(0, 1000) : '',
+            stderr: stderrData ? stderrData.slice(0, 1000) : '',
+            files: Object.keys(resultFiles),
+            fileIds,
+        });
 
         return ret;
     } finally {
