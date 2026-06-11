@@ -31,7 +31,7 @@ async function check(config) {
 }
 
 async function compile(checker, copyIn) {
-    const file = await fsp.readFile(checker);
+    const file = await fsp.readFile(checker, 'utf8');
     return _compile(checker.split('.')[1], file, 'checker', copyIn);
 }
 

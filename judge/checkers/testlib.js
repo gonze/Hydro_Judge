@@ -23,15 +23,19 @@ async function check(config) {
 }
 
 async function compileChecker(checker, copyIn) {
-    copyIn['testlib.h'] = { src: path.resolve(FILES_DIR, 'testlib.h') };
-    const file = await fsp.readFile(checker);
-    return await _compile(checker.split('.')[1], file, 'checker', copyIn);
+    const compileCopyIn = Object.assign({}, copyIn || {}, {
+        'testlib.h': { src: path.resolve(FILES_DIR, 'testlib.h') },
+    });
+    const file = await fsp.readFile(checker, 'utf8');
+    return await _compile(checker.split('.')[1], file, 'checker', compileCopyIn);
 }
 
 async function compileInteractor(interactor, copyIn) {
-    copyIn['testlib.h'] = { src: path.resolve(FILES_DIR, 'testlib.h') };
-    const file = await fsp.readFile(interactor);
-    return await _compile(interactor.split('.')[1], file, 'interactor', copyIn);
+    const compileCopyIn = Object.assign({}, copyIn || {}, {
+        'testlib.h': { src: path.resolve(FILES_DIR, 'testlib.h') },
+    });
+    const file = await fsp.readFile(interactor, 'utf8');
+    return await _compile(interactor.split('.')[1], file, 'interactor', compileCopyIn);
 }
 
 module.exports = {
