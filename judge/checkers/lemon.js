@@ -14,11 +14,11 @@ const _compile = require('../compile');
 
 async function check(config) {
     const { files } = await run(`\${dir}/checker input usrout stdout ${config.score} score message`, {
-        copyIn: {
+        copyIn: Object.assign({}, config.copyIn || {}, {
             usrout: { src: config.user_stdout },
             stdout: { src: config.output },
             input: { src: config.input },
-        },
+        }),
         copyOut: ['score', 'message'],
     });
     const { message } = files;

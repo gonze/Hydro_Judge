@@ -13,11 +13,11 @@ const fsp = fs.promises;
 
 async function check(config) {
     const { code, stdout } = await run('${dir}/checker input stdout usrout', {
-        copyIn: {
+        copyIn: Object.assign({}, config.copyIn || {}, {
             usrout: { src: config.user_stdout },
             stdout: { src: config.output },
             input: { src: config.input },
-        },
+        }),
     });
     const status = code ? STATUS_WRONG_ANSWER : STATUS_ACCEPTED;
     const message = (await fsp.readFile(stdout)).toString();

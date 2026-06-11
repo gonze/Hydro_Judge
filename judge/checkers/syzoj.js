@@ -17,12 +17,12 @@ const fsp = fs.promises;
 async function check(config) {
     // eslint-disable-next-line prefer-const
     let { status, stdout, stderr } = await run('${dir}/checker', {
-        copyIn: {
+        copyIn: Object.assign({}, config.copyIn || {}, {
             in: { src: config.input },
             user_out: { src: config.user_stdout },
             answer: { src: config.output },
             code: { content: config.code },
-        },
+        }),
     });
     if (status !== STATUS_ACCEPTED) throw new SystemError('Checker returned a non-zero value', [status]);
     const score = parseInt(stdout);

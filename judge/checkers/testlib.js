@@ -9,11 +9,11 @@ const fsp = fs.promises;
 
 async function check(config) {
     const { stdout, stderr } = await run('${dir}/checker ${dir}/in ${dir}/user_out ${dir}/answer', {
-        copyIn: {
+        copyIn: Object.assign({}, config.copyIn || {}, {
             in: { src: config.input },
             user_out: { src: config.user_stdout },
             answer: { src: config.output },
-        },
+        }),
     });
     return {
         status: stderr === 'ok \n' ? STATUS_ACCEPTED : STATUS_WRONG_ANSWER,

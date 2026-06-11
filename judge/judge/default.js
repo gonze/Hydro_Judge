@@ -87,7 +87,7 @@ function judgeCase(c) {
                 status = STATUS_MEMORY_LIMIT_EXCEEDED;
             } else {
                 [status, score, message] = await check({
-                    copyIn: copyInDir(path.resolve(ctx.tmpdir, 'checker')),
+                    copyIn: ctx.checkerCopyIn || copyInDir(path.resolve(ctx.tmpdir, 'checker')),
                     stdin: c.input,
                     stdout: c.output,
                     user_stdout: stdout,
@@ -155,7 +155,7 @@ exports.judge = async (ctx) => {
         } else throw new CompileError('Language not supported by provided templates');
     }
     ctx.next({ status: STATUS_COMPILING });
-    [ctx.execute] = await Promise.all([
+    const [executeResult, checkerResult] = await Promise.all([
         (async () => {
             const copyIn = {};
             for (const file of ctx.config.user_extra_files) {
@@ -164,18 +164,28 @@ exports.judge = async (ctx) => {
             return await compile(ctx.lang, ctx.code, 'code', copyIn, ctx.next);
         })(),
         (async () => {
-            const copyIn = {};
+            const runtimeCopyIn = {};
+            const compileCopyIn = {};
             for (const file of ctx.config.judge_extra_files) {
-                copyIn[parseFilename(file)] = { src: file };
+                const name = parseFilename(file);
+                runtimeCopyIn[name] = { src: file };
+                compileCopyIn[name] = { src: file };
             }
-            return await compileChecker(
+            const compiled = await compileChecker(
                 ctx.config.checker_type || 'default',
                 ctx.config.checker,
-                copyIn,
+                compileCopyIn,
             );
+            return {
+                copyIn: Object.assign(runtimeCopyIn, compiled.copyIn || {}),
+                clean: compiled.clean,
+            };
         })(),
     ]);
+    ctx.execute = executeResult;
     ctx.clean.push(ctx.execute.clean);
+    ctx.checkerCopyIn = checkerResult.copyIn || {};
+    if (checkerResult.clean) ctx.clean.push(checkerResult.clean);
     ctx.next({ status: STATUS_JUDGING, progress: 0 });
     const tasks = [];
     ctx.total_status = 0;

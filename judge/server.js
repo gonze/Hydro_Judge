@@ -118,7 +118,7 @@ class JudgeContext {
                 status: data.case.status,
                 time: data.case.time_ms || data.case.time,
                 memory: data.case.memory_kb || data.case.memory,
-                message: data.judge_text || data.message || data.judgeText,
+                message: data.case.judge_text || data.case.message || data.judge_text || data.message || data.judgeText || '',
                 score: data.case.score || 0,
                 id: data.case.id || caseId,
                 input: data.case.input || '',

@@ -12,10 +12,10 @@ const fsp = fs.promises;
 
 async function check(config) {
     const { status, stdout } = await run('${dir}/checker input usrout', {
-        copyIn: {
+        copyIn: Object.assign({}, config.copyIn || {}, {
             usrout: { src: config.user_stdout },
             input: { src: config.input },
-        },
+        }),
     });
     const st = (status === STATUS_ACCEPTED) ? STATUS_ACCEPTED : STATUS_WRONG_ANSWER;
     return { status: st, score: (st === STATUS_ACCEPTED) ? config.score : 0, message: stdout };
