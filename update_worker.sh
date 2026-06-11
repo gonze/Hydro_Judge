@@ -2,12 +2,46 @@
 set -euo pipefail
 
 BRANCH="${BRANCH:-master}"
-JUDGE_PORT="${JUDGE_PORT:-5000}"
-JUDGE_TOKEN="${JUDGE_TOKEN:-change-this-token}"
-JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
-SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
 FORCE="${FORCE:-0}"
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${ENV_FILE:-${INSTALL_DIR}/.env}"
+
+load_env_file() {
+  if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+  fi
+}
+
+generate_token() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32
+  else
+    tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64
+  fi
+}
+
+write_env_file() {
+  umask 077
+  cat >"$ENV_FILE" <<EOF
+JUDGE_PORT=${JUDGE_PORT}
+JUDGE_TOKEN=${JUDGE_TOKEN}
+JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
+SERVICE_NAME=${SERVICE_NAME}
+EOF
+}
+
+load_env_file
+JUDGE_PORT="${JUDGE_PORT:-5000}"
+JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
+SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
+if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; then
+  JUDGE_TOKEN="$(generate_token)"
+  echo "Generated new JUDGE_TOKEN and saved it to ${ENV_FILE}."
+fi
+write_env_file
 
 if ! command -v sudo >/dev/null 2>&1; then
   echo "sudo is required. Please run this script on Ubuntu with sudo access." >&2

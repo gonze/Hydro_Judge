@@ -1,11 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${ENV_FILE:-${INSTALL_DIR}/.env}"
+
+load_env_file() {
+  if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+  fi
+}
+
+generate_token() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 32
+  else
+    tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64
+  fi
+}
+
+write_env_file() {
+  umask 077
+  cat >"$ENV_FILE" <<EOF
+JUDGE_PORT=${JUDGE_PORT}
+JUDGE_TOKEN=${JUDGE_TOKEN}
+JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
+SERVICE_NAME=${SERVICE_NAME}
+EOF
+}
+
+load_env_file
 JUDGE_PORT="${JUDGE_PORT:-5000}"
-JUDGE_TOKEN="${JUDGE_TOKEN:-change-this-token}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
-INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; then
+  JUDGE_TOKEN="$(generate_token)"
+  echo "Generated new JUDGE_TOKEN and saved it to ${ENV_FILE}."
+fi
+write_env_file
 
 if ! command -v sudo >/dev/null 2>&1; then
   echo "sudo is required. Please run this script on a normal Ubuntu server user with sudo access." >&2
@@ -65,7 +99,7 @@ cat <<EOF
 Install complete.
 
 Next step:
-  JUDGE_TOKEN="${JUDGE_TOKEN}" ./start_worker.sh
+  ./start_worker.sh
 
 Current config:
   SERVICE_NAME=${SERVICE_NAME}
@@ -74,6 +108,8 @@ Current config:
   JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 
 Important:
-  If this is a shared LAN, replace the default token before starting:
-  JUDGE_TOKEN="your-long-random-token" ./install_ubuntu.sh
+  The token was saved to ${ENV_FILE}.
+  Copy this token into getcode -> 题目配置 -> 评测服务配置.
+  To rotate it later, run:
+    JUDGE_TOKEN="your-long-random-token" ./start_worker.sh
 EOF

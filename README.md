@@ -18,8 +18,8 @@ cd Hydro_Judge
 chmod +x install_ubuntu.sh start_worker.sh
 chmod +x update_worker.sh
 
-JUDGE_TOKEN="change-this-token" ./install_ubuntu.sh
-JUDGE_TOKEN="change-this-token" ./start_worker.sh
+./install_ubuntu.sh
+./start_worker.sh
 ```
 
 The install script will:
@@ -45,44 +45,54 @@ The update script will:
 
 ### Configuration
 
-Both scripts accept environment variables:
+The scripts create `./.env` automatically on first run. If `JUDGE_TOKEN` is not
+provided, a random token is generated and stored there. The same token is reused
+after reboot or service restart.
+
+View the generated token:
+
+```bash
+grep '^JUDGE_TOKEN=' .env
+```
+
+Both scripts also accept environment variables:
 
 ```bash
 JUDGE_PORT=5000
-JUDGE_TOKEN="change-this-token"
+JUDGE_TOKEN="auto-generated-if-empty"
 JUDGE_DATA_DIR="/var/oj/judge-data"
 SERVICE_NAME="hydro-judge-worker"
 ```
 
-For a real LAN deployment, replace the default token:
+To manually set or rotate the token:
 
 ```bash
-JUDGE_TOKEN="your-long-random-token" ./install_ubuntu.sh
 JUDGE_TOKEN="your-long-random-token" ./start_worker.sh
 ```
 
 Update from GitHub and restart:
 
 ```bash
-JUDGE_TOKEN="your-long-random-token" ./update_worker.sh
+./update_worker.sh
 ```
 
 If the server has local uncommitted changes, the update script stops. To force
 the update after you have confirmed those changes are disposable:
 
 ```bash
-FORCE=1 JUDGE_TOKEN="your-long-random-token" ./update_worker.sh
+FORCE=1 ./update_worker.sh
 ```
 
 ### Connect getcode
 
 On the Windows `getcode` machine:
 
-```powershell
-$env:JUDGE_HOST="http://<ubuntu-judge-ip>:5000"
-$env:JUDGE_TOKEN="your-long-random-token"
-python app.py
-```
+Open `题目配置 -> 评测服务配置`, set:
+
+- `Hydro_Judge 地址`: `http://<ubuntu-judge-ip>:5000`
+- `Token`: the value from `grep '^JUDGE_TOKEN=' .env`
+
+Then click `保存并测试`.
 
 `getcode` uploads testdata to `POST /data/upload` and stores the returned
 `remote_data_id`. During judging it sends `data_id` to `POST /judge/submit`,
