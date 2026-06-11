@@ -3,6 +3,7 @@ set -euo pipefail
 
 BRANCH="${BRANCH:-master}"
 FORCE="${FORCE:-0}"
+UPDATE_DEPS="${UPDATE_DEPS:-0}"
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${ENV_FILE:-${INSTALL_DIR}/.env}"
 
@@ -83,11 +84,15 @@ git fetch origin
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
-echo "[4/6] Updating Node dependencies..."
-if [ -f package-lock.json ]; then
-  npm ci
+if [ "$UPDATE_DEPS" = "1" ]; then
+  echo "[4/6] Updating Node dependencies..."
+  if [ -f package-lock.json ]; then
+    npm ci
+  else
+    npm install
+  fi
 else
-  npm install
+  echo "[4/6] Skipping Node dependency update. Use UPDATE_DEPS=1 ./update_worker.sh to refresh dependencies."
 fi
 
 echo "[5/6] Refreshing systemd service config..."

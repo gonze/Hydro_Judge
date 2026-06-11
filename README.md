@@ -40,10 +40,16 @@ The update script will:
 
 - stop the `hydro-judge-worker` service
 - pull the latest code from GitHub
-- refresh npm dependencies
 - refresh the systemd service file
 - restart the worker and run a health check
 - print the current worker address and token after restart
+
+By default, update does not reinstall npm dependencies. If `package.json` or
+`package-lock.json` changed, run:
+
+```bash
+UPDATE_DEPS=1 ./update_worker.sh
+```
 
 ### Configuration
 

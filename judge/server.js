@@ -187,6 +187,53 @@ async function handleDataStatus(request, response) {
     }
 }
 
+async function listFiles(rootDir) {
+    const result = [];
+    async function walk(dir) {
+        const entries = await fs.readdir(dir);
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry);
+            const stat = await fs.stat(fullPath);
+            if (stat.isDirectory()) {
+                await walk(fullPath);
+            } else {
+                result.push({
+                    path: path.relative(rootDir, fullPath).replace(/\\/g, '/'),
+                    size: stat.size,
+                });
+            }
+        }
+    }
+    if (await fs.pathExists(rootDir)) await walk(rootDir);
+    result.sort((a, b) => a.path.localeCompare(b.path));
+    return result;
+}
+
+async function handleDataFiles(request, response) {
+    try {
+        const query = url.parse(request.url, true).query;
+        const dataId = assertDataId(query.data_id);
+        const dir = resolveDataDir(dataId);
+        const exists = await fs.pathExists(dir);
+        const files = exists ? await listFiles(dir) : [];
+        const configPath = path.join(dir, 'config.yaml');
+        const configYaml = exists && await fs.pathExists(configPath)
+            ? (await fs.readFile(configPath)).toString().slice(0, 16384)
+            : null;
+        jsonResponse(response, 200, {
+            success: true,
+            data_id: dataId,
+            data_dir: dir,
+            exists,
+            file_count: files.length,
+            files,
+            config_yaml: configYaml,
+        });
+    } catch (e) {
+        jsonResponse(response, 400, { success: false, error: e.message });
+    }
+}
+
 async function handleJudgeSubmit(request, response) {
     let ctx = null;
     try {
@@ -321,6 +368,8 @@ const server = http.createServer((request, response) => {
         handleDataUpload(request, response);
     } else if (pathname === '/data/status' && request.method === 'GET') {
         handleDataStatus(request, response);
+    } else if (pathname === '/data/files' && request.method === 'GET') {
+        handleDataFiles(request, response);
     } else if (pathname === '/test' && request.method === 'GET') {
         handleTest(request, response);
     } else if (pathname === '/status' && request.method === 'GET') {
