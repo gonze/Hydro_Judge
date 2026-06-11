@@ -1,7 +1,38 @@
-function wrap(func) {
+const fs = require('fs-extra');
+const path = require('path');
+
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+fs.ensureDirSync(LOG_DIR);
+
+function getLogFileName() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}.log`;
+}
+
+function writeLog(level, message) {
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    const logLine = `[${timestamp}] [${level.toUpperCase()}] ${message}\n`;
+    
+    const logFile = path.join(LOG_DIR, getLogFileName());
+    fs.appendFileSync(logFile, logLine, 'utf-8');
+}
+
+function wrap(func, level) {
     return (...args) => {
-        const dt = (new Date()).toString();
-        func(dt, ...args);
+        const message = args.map(arg => {
+            if (typeof arg === 'object') {
+                try {
+                    return JSON.stringify(arg);
+                } catch (e) {
+                    return String(arg);
+                }
+            }
+            return String(arg);
+        }).join(' ');
+        
+        func(`[${level.toUpperCase()}] ${message}`);
+        writeLog(level, message);
     };
 }
 
@@ -13,7 +44,9 @@ class Logger {
         this.warn = wrap(console.warn, 'warn');
         this.debug = wrap(console.debug, 'debug');
         this.submission = (id, payload = {}) => {
-            console.log(`${new Date()} ${id}`, payload);
+            const message = `${id} ${JSON.stringify(payload)}`;
+            console.log(`[LOG] ${message}`);
+            writeLog('log', message);
         };
     }
 
@@ -24,7 +57,9 @@ class Logger {
         this.warn = wrap(logger.warn, 'warn');
         this.debug = wrap(logger.debug, 'debug');
         this.submission = (id, payload = {}) => {
-            logger.log(`${new Date()} ${id}`, payload);
+            const message = `${id} ${JSON.stringify(payload)}`;
+            logger.log(`[LOG] ${message}`);
+            writeLog('log', message);
         };
     }
 }

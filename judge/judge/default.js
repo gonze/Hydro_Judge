@@ -29,7 +29,7 @@ function judgeCase(c) {
         const stdout = path.resolve(ctx.tmpdir, `${c.id}.out`);
         const stderr = path.resolve(ctx.tmpdir, `${c.id}.err`);
         const res = await run(
-            ctx.execute.execute.replace(/\$\{name\}/g, 'code'),
+            ctx.execute.execute.replace(/\$\{name\}/g, 'code').replace(/\$\{dir\}/g, ctx.tmpdir),
             {
                 stdin,
                 stdout: filename ? null : stdout,

@@ -4,7 +4,8 @@
   "main": "judge/daemon.js",
   "author": "masnn",
   "os": [
-    "linux"
+    "linux",
+    "win32"
   ],
   "dependencies": {
     "axios": "^0.19.0",

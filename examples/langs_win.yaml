@@ -1,0 +1,30 @@
+c:
+    type: compiler
+    compile: gcc -O2 -Wall -std=c99 -o ${name}.exe foo.c -lm
+    code_file: foo.c
+    execute: ${dir}/${name}.exe
+cc:
+    type: compiler
+    compile: g++ -O2 -Wall -std=c++11 -o ${name}.exe foo.cc -lm
+    code_file: foo.cc
+    execute: ${dir}/${name}.exe
+cc11:
+    type: compiler
+    compile: g++ -O2 -Wall -std=c++11 -o ${name}.exe foo.cc -lm
+    code_file: foo.cc
+    execute: ${dir}/${name}.exe
+cc17:
+    type: compiler
+    compile: g++ -O2 -Wall -std=c++17 -o ${name}.exe foo.cc -lm
+    code_file: foo.cc
+    execute: ${dir}/${name}.exe
+py:
+    type: compiler
+    compile: python -c "import py_compile; py_compile.compile('${dir}/foo.py', '${dir}/${name}', doraise=True)"
+    code_file: foo.py
+    execute: python ${dir}/foo.py
+py3:
+    type: compiler
+    compile: python -c "import py_compile; py_compile.compile('${dir}/foo.py', '${dir}/${name}', doraise=True)"
+    code_file: foo.py
+    execute: python ${dir}/foo.py

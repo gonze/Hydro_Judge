@@ -5,37 +5,43 @@ const { CompileError, SystemError } = require('./error');
 const log = require('./log');
 const { STATUS_ACCEPTED } = require('./status');
 const { compilerText } = require('./utils');
-const { LANGS_FILE, LANGS } = require('./config');
+const { LANGS_FILE, LANGS, IS_WINDOWS } = require('./config');
 
 let _langs = {};
 try {
     if (LANGS) _langs = LANGS;
     else _langs = yaml.safeLoad(fs.readFileSync(LANGS_FILE).toString());
 } catch (e) {
-    log.error('Invalidate Language file %s', LANGS_FILE);
+    log.error('Invalid language file %s', LANGS_FILE);
     log.error(e);
     if (!global.Hydro) process.exit(1);
 }
+
 async function compile(lang, code, target, copyIn, next) {
-    if (!_langs[lang]) throw new SystemError(`不支持的语言：${lang}`);
-    const info = _langs[lang]; const
-        f = {};
+    if (!_langs[lang]) throw new SystemError(`Unsupported language: ${lang}`);
+    const info = _langs[lang];
+    const f = {};
     if (info.type === 'compiler') {
         copyIn[info.code_file] = { content: code };
+        const cachedTargets = IS_WINDOWS ? [target, `${target}.exe`] : [target];
         const {
-            status, stdout, stderr, fileIds,
+            status, stdout, stderr, fileIds = {},
         } = await run(
             info.compile.replace(/\$\{name\}/g, target),
-            { copyIn, copyOutCached: [target] },
+            { copyIn, copyOutCached: cachedTargets },
         );
         if (status !== STATUS_ACCEPTED) throw new CompileError({ status, stdout, stderr });
-        if (!fileIds[target]) throw new CompileError({ stderr: '没有找到可执行文件' });
+        const outputName = cachedTargets.find((name) => fileIds[name]);
+        if (!outputName) throw new CompileError({ stderr: 'Executable file was not generated.' });
         if (next) next({ compiler_text: compilerText(stdout, stderr) });
-        f[target] = { fileId: fileIds[target] };
-        return { execute: info.execute, copyIn: f, clean: () => del(fileIds[target]) };
-    } if (info.type === 'interpreter') {
+        f[outputName] = { fileId: fileIds[outputName] };
+        return { execute: info.execute, copyIn: f, clean: () => del(fileIds[outputName]) };
+    }
+    if (info.type === 'interpreter') {
         f[target] = { content: code };
         return { execute: info.execute, copyIn: f, clean: () => Promise.resolve() };
     }
+    throw new SystemError(`Unsupported language type: ${info.type}`);
 }
+
 module.exports = compile;

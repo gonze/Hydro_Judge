@@ -1,9 +1,12 @@
 const fs = require('fs-extra');
 const path = require('path');
+const { platform } = require('os');
 const { parse } = require('shell-quote');
 const _ = require('lodash');
 const EventEmitter = require('events');
 const { FormatError } = require('./error');
+
+const IS_WINDOWS = platform() === 'win32';
 
 const max = (a, b) => (a > b ? a : b);
 const TIME_RE = /^([0-9]+(?:\.[0-9]*)?)([mu]?)s?$/i;
@@ -32,8 +35,9 @@ function sleep(timeout) {
     });
 }
 
-function parseFilename(path) {
-    const t = path.split('/');
+function parseFilename(p) {
+    const sep = IS_WINDOWS ? /[\\/]/ : '/';
+    const t = p.split(sep);
     return t[t.length - 1];
 }
 
@@ -84,20 +88,20 @@ function copyInDir(dir) {
     const files = {};
     if (fs.existsSync(dir)) {
         fs.readdirSync(dir).forEach((f1) => {
-            const p1 = `${dir}/${f1}`;
+            const p1 = path.join(dir, f1);
             if (fs.statSync(p1).isDirectory()) {
                 fs.readdirSync(p1).forEach((f2) => {
-                    files[`${f1}/${f2}`] = { src: `${dir}/${f1}/${f2}` };
+                    files[`${f1}/${f2}`] = { src: path.join(dir, f1, f2) };
                 });
-            } else files[f1] = { src: `${dir}/${f1}` };
+            } else files[f1] = { src: p1 };
         });
     }
     return files;
 }
 
 function restrictFile(p) {
-    if (!p) return '/';
-    if (p[0] === '/') p = '';
+    if (!p) return IS_WINDOWS ? '\\' : '/';
+    if (p[0] === '/' || p[0] === '\\') p = '';
     return p.replace(/\.\./i, '');
 }
 
@@ -122,4 +126,5 @@ module.exports = {
     parseFilename,
     cmd: parse,
     ensureFile,
+    IS_WINDOWS,
 };

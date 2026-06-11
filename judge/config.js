@@ -5,9 +5,12 @@ const path = require('path');
 const fs = require('fs-extra');
 const log = require('./log');
 
+const IS_WINDOWS = os.platform() === 'win32';
+
 const config = {
+    IS_WINDOWS,
     CONFIG_FILE: path.resolve(os.homedir(), '.config', 'hydro', 'judge.yaml'),
-    LANGS_FILE: path.resolve(os.homedir(), '.config', 'hydro', 'langs.yaml'),
+    LANGS_FILE: path.resolve(os.homedir(), '.config', 'hydro', IS_WINDOWS ? 'langs_win.yaml' : 'langs.yaml'),
     CACHE_DIR: path.resolve(os.homedir(), '.cache', 'hydro', 'judge'),
     FILES_DIR: path.resolve(os.homedir(), '.cache', 'hydro', 'files', 'judge'),
     SYSTEM_MEMORY_LIMIT_MB: 1024,
@@ -15,7 +18,7 @@ const config = {
     SYSTEM_PROCESS_LIMIT: 32,
     RETRY_DELAY_SEC: 15,
     TEMP_DIR: path.resolve(os.tmpdir(), 'hydro', 'judge'),
-    EXECUTION_HOST: 'http://localhost:5050',
+    EXECUTION_HOST: IS_WINDOWS ? 'local' : 'http://localhost:5050',
     CONFIG: null,
     LANGS: null,
     changeDefault(name, from, to) {
@@ -25,10 +28,13 @@ const config = {
 
 if (fs.existsSync(path.resolve(process.cwd(), '.env'))) {
     const env = {};
-    const f = fs.readFileSync('.env').toString();
+    const f = fs.readFileSync('.env').toString().split(/\r?\n/);
     for (const line of f) {
-        const a = line.split('=');
-        env[a[0]] = a[1];
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const index = trimmed.indexOf('=');
+        if (index === -1) continue;
+        env[trimmed.slice(0, index)] = trimmed.slice(index + 1);
     }
     Object.assign(process.env, env);
 }
@@ -49,7 +55,7 @@ if (process.env.FILES_DIR || argv.files) {
     config.FILES_DIR = path.resolve(process.env.FILES_DIR || argv.files);
 }
 if (process.env.EXECUTION_HOST || argv.execute) {
-    config.EXECUTION_HOST = path.resolve(process.env.EXECUTION_HOST || argv.execute);
+    config.EXECUTION_HOST = process.env.EXECUTION_HOST || argv.execute;
 }
 if (process.env.START_EXECUTOR_SERVER) {
     const args = (process.env.EXECUTOR_SERVER_ARGS || '').split(' ');
@@ -73,9 +79,16 @@ if (process.env.START_EXECUTOR_SERVER) {
 }
 if (!(fs.existsSync(config.LANGS_FILE) || global.Hydro)) {
     fs.ensureDirSync(path.dirname(config.LANGS_FILE));
-    if (fs.existsSync(path.join(__dirname, '..', 'examples', 'langs.yaml'))) {
+    const examplesDir = path.join(__dirname, '..', 'examples');
+    const winLangFile = path.join(examplesDir, 'langs_win.yaml');
+    const linuxLangFile = path.join(examplesDir, 'langs.yaml');
+    
+    if (IS_WINDOWS && fs.existsSync(winLangFile)) {
+        log.error('Language file not found, using Windows default.');
+        config.LANGS_FILE = winLangFile;
+    } else if (fs.existsSync(linuxLangFile)) {
         log.error('Language file not found, using default.');
-        config.LANGS_FILE = path.join(__dirname, '..', 'examples', 'langs.yaml');
+        config.LANGS_FILE = linuxLangFile;
     } else throw new Error('Language file not found');
 }
 

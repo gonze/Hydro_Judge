@@ -1,47 +1,40 @@
-const { run } = require('../sandbox');
+const fs = require('fs-extra');
 const { STATUS_ACCEPTED, STATUS_WRONG_ANSWER } = require('../status');
 
-async function check(config) {
-    const { stdout } = await run('/usr/bin/diff -BZ usrout stdout', {
-        copyIn: {
-            usrout: { src: config.user_stdout },
-            stdout: { src: config.output },
-        },
-    });
-    let status;
-    let message = '';
-    if (stdout) {
-        status = STATUS_WRONG_ANSWER;
-        if (config.detail) {
-            try {
-                const pt = stdout.split('---');
-                const u = pt[0].split('\n')[1];
-                let usr = u.substr(2, u.length - 2).trim().split(' ');
-                const t = pt[1].split('\n')[1];
-                let std = t.substr(2, t.length - 2).trim().split(' ');
-                if (usr.length < std.length) message = '标准输出比选手输出长。';
-                else if (usr.length > std.length) message = '选手输出比标准输出长。';
-                else {
-                    for (const i in usr) {
-                        if (usr[i] !== std[i]) {
-                            usr = usr[i];
-                            std = std[i];
-                            break;
-                        }
-                    }
-                    if (usr.length > 20) usr = `${usr.substring(0, 16)}...`;
-                    if (std.length > 20) std = `${std.substring(0, 16)}...`;
-                    message = `读取到 ${usr} ，应为 ${std}`;
-                }
-            } catch (e) {
-                message = stdout.substring(0, stdout.length - 1 <= 30 ? stdout.length - 1 : 30);
-            }
+function normalizeOutput(text) {
+    return text
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n')
+        .map((line) => line.replace(/[ \t]+$/g, ''))
+        .filter((line) => line.length > 0)
+        .join('\n');
+}
+
+function firstDifference(expected, actual) {
+    const expectedTokens = expected.split(/\s+/).filter(Boolean);
+    const actualTokens = actual.split(/\s+/).filter(Boolean);
+    const len = Math.max(expectedTokens.length, actualTokens.length);
+    for (let i = 0; i < len; i++) {
+        if (expectedTokens[i] !== actualTokens[i]) {
+            return `expected ${expectedTokens[i] || '<EOF>'}, got ${actualTokens[i] || '<EOF>'}`;
         }
-    } else status = STATUS_ACCEPTED;
+    }
+    return 'output differs';
+}
+
+async function check(config) {
+    const [expectedRaw, actualRaw] = await Promise.all([
+        fs.readFile(config.output, 'utf-8'),
+        fs.readFile(config.user_stdout, 'utf-8'),
+    ]);
+    const expected = normalizeOutput(expectedRaw);
+    const actual = normalizeOutput(actualRaw);
+    const accepted = expected === actual;
     return {
-        score: status === STATUS_ACCEPTED ? config.score : 0,
-        status,
-        message,
+        score: accepted ? config.score : 0,
+        status: accepted ? STATUS_ACCEPTED : STATUS_WRONG_ANSWER,
+        message: accepted || !config.detail ? '' : firstDifference(expected, actual),
     };
 }
 
