@@ -12,7 +12,9 @@ const PORT = Number(process.env.JUDGE_PORT || 5000);
 const JUDGE_TOKEN = process.env.JUDGE_TOKEN || '';
 const JUDGE_DATA_DIR = path.resolve(process.env.JUDGE_DATA_DIR || path.join(os.tmpdir(), 'hydro', 'judge-data'));
 const MAX_JSON_BODY_BYTES = Number(process.env.JUDGE_MAX_BODY_MB || 256) * 1024 * 1024;
+const TASK_TIMEOUT_MS = Number(process.env.JUDGE_TASK_TIMEOUT_MS || 300) * 1000;
 const tasks = {};
+let taskSeq = 0;
 
 fs.ensureDirSync(JUDGE_DATA_DIR);
 
@@ -80,8 +82,9 @@ function safeRelativePath(filePath) {
 }
 
 class JudgeContext {
-    constructor(request) {
+    constructor(request, taskId) {
         this.request = request;
+        this.taskId = taskId;
         this.tmpdir = path.resolve(os.tmpdir(), 'hydro', 'judge', request.rid);
         fs.ensureDirSync(this.tmpdir);
         this.nextId = 1;
@@ -109,19 +112,31 @@ class JudgeContext {
                 message: data.judge_text || data.message || data.judgeText,
             };
         }
-        if (tasks[this.request.rid]) tasks[this.request.rid].progress = data;
+        if (tasks[this.request.rid] && tasks[this.request.rid].task_id === this.taskId && tasks[this.request.rid].status === 'running') {
+            tasks[this.request.rid].progress = data;
+        }
     }
 
     end(data) {
+        if (!tasks[this.request.rid] || tasks[this.request.rid].task_id !== this.taskId || tasks[this.request.rid].status !== 'running') return;
         data.operation = 'end';
         data.rid = this.request.rid;
         data.time = data.time_ms || data.time;
         data.memory = data.memory_kb || data.memory;
-        if (tasks[this.request.rid]) {
-            tasks[this.request.rid].result = data;
-            tasks[this.request.rid].status = 'completed';
-        }
+        tasks[this.request.rid].result = data;
+        tasks[this.request.rid].status = 'completed';
+        tasks[this.request.rid].completed_at = new Date().toISOString();
         log.log(`Judge completed: ${this.request.rid}`, data);
+    }
+
+    fail(error) {
+        this.end({
+            status: STATUS_SYSTEM_ERROR,
+            score: 0,
+            time_ms: 0,
+            memory_kb: 0,
+            judge_text: error && error.message ? error.message : String(error || 'Judge failed'),
+        });
     }
 }
 
@@ -173,6 +188,7 @@ async function handleDataStatus(request, response) {
 }
 
 async function handleJudgeSubmit(request, response) {
+    let ctx = null;
     try {
         const data = await readJsonBody(request);
         const {
@@ -183,12 +199,19 @@ async function handleJudgeSubmit(request, response) {
         if (!testdataPath) throw new Error('Missing testdata path or data_id');
         if (!await fs.pathExists(testdataPath)) throw new Error(`Testdata not found: ${dataId || testdataPath}`);
 
+        const taskId = ++taskSeq;
         log.log(`Judge received: ${rid} pid=${pid} data=${dataId || testdataPath}`);
-        tasks[rid] = { status: 'running', progress: null, result: null };
+        tasks[rid] = {
+            task_id: taskId,
+            status: 'running',
+            progress: null,
+            result: null,
+            received_at: new Date().toISOString(),
+        };
 
-        const ctx = new JudgeContext({
+        ctx = new JudgeContext({
             rid, pid, lang, code, data: testdataPath, data_id: dataId,
-        });
+        }, taskId);
 
         ctx.config = await readCases(
             testdataPath,
@@ -206,6 +229,11 @@ async function handleJudgeSubmit(request, response) {
             });
         });
 
+        const timeout = setTimeout(() => {
+            log.error(`Judge timeout: ${rid} after ${TASK_TIMEOUT_MS}ms`);
+            ctx.fail(new Error(`Judge timeout after ${Math.floor(TASK_TIMEOUT_MS / 1000)} seconds`));
+        }, TASK_TIMEOUT_MS);
+
         setTimeout(async () => {
             try {
                 await judge[ctx.config.type || 'default'].judge(ctx);
@@ -220,12 +248,18 @@ async function handleJudgeSubmit(request, response) {
                     compiler_text: isCompileError ? [e.stdout, e.stderr].filter(Boolean).join('\n') : '',
                     judge_text: isCompileError ? '' : e.message,
                 });
+            } finally {
+                clearTimeout(timeout);
+                await fs.remove(ctx.tmpdir).catch(() => {});
             }
-            await fs.remove(ctx.tmpdir).catch(() => {});
         }, 0);
 
-        jsonResponse(response, 200, { success: true, rid, data_id: dataId || null });
+        jsonResponse(response, 200, { success: true, rid, task_id: taskId, data_id: dataId || null });
     } catch (e) {
+        if (ctx) {
+            log.error('Judge setup failed:', e);
+            ctx.fail(e);
+        }
         jsonResponse(response, 400, { success: false, error: e.message });
     }
 }
