@@ -6,6 +6,7 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
 } else {
     const Axios = require('axios');
     const fs = require('fs-extra');
+    const log = require('./log');
     const {
         SYSTEM_MEMORY_LIMIT_MB, SYSTEM_PROCESS_LIMIT, SYSTEM_TIME_LIMIT_MS, EXECUTION_HOST,
     } = require('./config');
@@ -76,6 +77,11 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
             body.cmd[1].files[1] = null;
             res = await axios.post('/run', body);
         } catch (e) {
+            log.error('go-judge runMultiple request failed', {
+                message: e.message,
+                status: e.response && e.response.status,
+                data: e.response && e.response.data,
+            });
             throw new SystemError('Cannot connect to sandbox service');
         }
         return res.data;
@@ -96,6 +102,12 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
             [result] = res.data;
         } catch (e) {
             // FIXME request body larger than maxBodyLength limit
+            log.error('go-judge run request failed', {
+                execute,
+                message: e.message,
+                status: e.response && e.response.status,
+                data: e.response && e.response.data,
+            });
             throw new SystemError('Cannot connect to sandbox service ', e.message);
         }
         log.info('go-judge run result', {

@@ -49,6 +49,8 @@ backend, skip this script and keep `EXECUTION_HOST=local`.
 The start script will:
 
 - use the local execution backend by default
+- recreate the local go-judge container when `EXECUTION_HOST` points to it
+- mount `JUDGE_DATA_DIR` and `FILES_DIR` into the go-judge container
 - restart the `hydro-judge-worker` service
 - health check `http://127.0.0.1:5000/status`
 - print the `Hydro_Judge 地址` and `Token` that should be copied into getcode
@@ -99,6 +101,12 @@ For the bundled local go-judge container, build the custom image first:
 ./install_ubuntu.sh
 ./start_worker.sh
 ```
+
+`start_worker.sh` mounts the same data paths into the go-judge container, so
+test data and `testlib.h` can be read inside the sandbox:
+
+- `JUDGE_DATA_DIR`, default `/var/oj/judge-data`
+- `FILES_DIR`, default `~/.cache/hydro/files/judge`
 
 Useful options:
 

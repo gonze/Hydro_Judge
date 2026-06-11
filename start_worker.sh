@@ -83,6 +83,23 @@ write_env_file
 
 TESTLIB_SOURCE="${INSTALL_DIR}/examples/testlib.h"
 
+ensure_data_and_support_files() {
+  sudo mkdir -p "$JUDGE_DATA_DIR"
+  sudo chown -R "$USER:$USER" "$(dirname "$JUDGE_DATA_DIR")"
+  sudo mkdir -p "$FILES_DIR"
+  if [ ! -f "${FILES_DIR}/testlib.h" ]; then
+    if [ ! -f "$TESTLIB_SOURCE" ]; then
+      echo "Missing ${TESTLIB_SOURCE}. Please keep examples/testlib.h with Hydro_Judge." >&2
+      exit 1
+    fi
+    sudo cp "$TESTLIB_SOURCE" "${FILES_DIR}/testlib.h"
+    echo "Installed testlib.h to ${FILES_DIR}/testlib.h"
+  else
+    echo "testlib.h already exists at ${FILES_DIR}/testlib.h"
+  fi
+  sudo chown -R "$USER:$USER" "$FILES_DIR"
+}
+
 check_go_judge_toolchain() {
   if ! sudo docker exec "$GO_JUDGE_CONTAINER" sh -lc 'command -v g++ >/dev/null 2>&1'; then
     cat >&2 <<EOF
@@ -104,38 +121,27 @@ if ! command -v sudo >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "[1/4] Ensuring judge data and support files exist..."
+ensure_data_and_support_files
+
 if [ "$EXECUTION_HOST" = "local" ]; then
-  echo "[1/4] Using local execution backend. Skipping go-judge container."
+  echo "[2/4] Using local execution backend. Skipping go-judge container."
 else
-  echo "[1/4] Ensuring go-judge container is running..."
+  echo "[2/4] Ensuring go-judge container is running..."
   if sudo docker ps -a --format '{{.Names}}' | grep -qx "$GO_JUDGE_CONTAINER"; then
-    sudo docker start "$GO_JUDGE_CONTAINER" >/dev/null
-  else
-    sudo docker run -d \
-      --name "$GO_JUDGE_CONTAINER" \
-      --restart unless-stopped \
-      --privileged \
-      --network host \
-      "$GO_JUDGE_IMAGE" >/dev/null
+    sudo docker stop "$GO_JUDGE_CONTAINER" >/dev/null 2>&1 || true
+    sudo docker rm "$GO_JUDGE_CONTAINER" >/dev/null
   fi
+  sudo docker run -d \
+    --name "$GO_JUDGE_CONTAINER" \
+    --restart unless-stopped \
+    --privileged \
+    --network host \
+    -v "${JUDGE_DATA_DIR}:${JUDGE_DATA_DIR}:ro" \
+    -v "${FILES_DIR}:${FILES_DIR}:ro" \
+    "$GO_JUDGE_IMAGE" >/dev/null
   check_go_judge_toolchain
 fi
-
-echo "[2/4] Ensuring judge data and support files exist..."
-sudo mkdir -p "$JUDGE_DATA_DIR"
-sudo chown -R "$USER:$USER" "$(dirname "$JUDGE_DATA_DIR")"
-sudo mkdir -p "$FILES_DIR"
-if [ ! -f "${FILES_DIR}/testlib.h" ]; then
-  if [ ! -f "$TESTLIB_SOURCE" ]; then
-    echo "Missing ${TESTLIB_SOURCE}. Please keep examples/testlib.h with Hydro_Judge." >&2
-    exit 1
-  fi
-  sudo cp "$TESTLIB_SOURCE" "${FILES_DIR}/testlib.h"
-  echo "Installed testlib.h to ${FILES_DIR}/testlib.h"
-else
-  echo "testlib.h already exists at ${FILES_DIR}/testlib.h"
-fi
-sudo chown -R "$USER:$USER" "$FILES_DIR"
 
 echo "[3/4] Refreshing and starting ${SERVICE_NAME}..."
 sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<EOF
