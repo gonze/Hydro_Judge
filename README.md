@@ -34,6 +34,7 @@ The start script will:
 - start the `criyle/go-judge:latest` Docker container
 - restart the `hydro-judge-worker` service
 - health check `http://127.0.0.1:5000/status`
+- print the `Hydro_Judge 地址` and `Token` that should be copied into getcode
 
 The update script will:
 
@@ -42,6 +43,7 @@ The update script will:
 - refresh npm dependencies
 - refresh the systemd service file
 - restart the worker and run a health check
+- print the current worker address and token after restart
 
 ### Configuration
 

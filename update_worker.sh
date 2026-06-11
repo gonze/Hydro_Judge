@@ -102,4 +102,4 @@ JUDGE_DATA_DIR="$JUDGE_DATA_DIR" \
 SERVICE_NAME="$SERVICE_NAME" \
 "$INSTALL_DIR/start_worker.sh"
 
-echo "Hydro_Judge update completed."
+echo "Hydro_Judge update completed. Connection info is shown above."

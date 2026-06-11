@@ -31,6 +31,38 @@ SERVICE_NAME=${SERVICE_NAME}
 EOF
 }
 
+detect_host_ip() {
+  local ip
+  ip="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  if [ -z "$ip" ] && command -v ip >/dev/null 2>&1; then
+    ip="$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')"
+  fi
+  if [ -z "$ip" ]; then
+    ip="127.0.0.1"
+  fi
+  printf '%s' "$ip"
+}
+
+print_connection_info() {
+  local host_ip
+  host_ip="$(detect_host_ip)"
+  cat <<EOF
+
+Hydro_Judge worker is ready.
+
+Fill this in getcode -> 题目配置 -> 评测服务配置:
+  Hydro_Judge 地址: http://${host_ip}:${JUDGE_PORT}
+  Token: ${JUDGE_TOKEN}
+
+Local test:
+  curl -H "Authorization: Bearer ${JUDGE_TOKEN}" http://127.0.0.1:${JUDGE_PORT}/status
+
+Token file:
+  ${ENV_FILE}
+
+EOF
+}
+
 load_env_file
 JUDGE_PORT="${JUDGE_PORT:-5000}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
@@ -95,6 +127,7 @@ for i in $(seq 1 20); do
     echo "Hydro Judge Worker is online:"
     cat /tmp/hydro-judge-status.json
     echo
+    print_connection_info
     exit 0
   fi
   sleep 1

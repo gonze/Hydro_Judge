@@ -107,9 +107,12 @@ Current config:
   JUDGE_TOKEN=${JUDGE_TOKEN}
   JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 
-Important:
-  The token was saved to ${ENV_FILE}.
-  Copy this token into getcode -> 题目配置 -> 评测服务配置.
-  To rotate it later, run:
-    JUDGE_TOKEN="your-long-random-token" ./start_worker.sh
+After start_worker.sh succeeds, copy the displayed address and token into:
+  getcode -> Problem Config -> Judge Service Config
+
+Token file:
+  ${ENV_FILE}
+
+To rotate the token later:
+  JUDGE_TOKEN="your-long-random-token" ./start_worker.sh
 EOF
