@@ -263,7 +263,7 @@ async function handleJudgeSubmit(request, response) {
         ctx.config = await readCases(
             testdataPath,
             { detail: true },
-            { next: ctx.next.bind(ctx), config: {} },
+            { next: ctx.next.bind(ctx) },
         );
 
         ctx.config.concurrency = 2;

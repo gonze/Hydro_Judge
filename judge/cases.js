@@ -20,7 +20,7 @@ async function readCases(folder, extra_config = {}, args) {
     args.next = args.next || (() => { });
     let config;
     const d = fs.readdirSync(folder);
-    if (d.length === 2) {
+    if (d.length === 2 && d.includes('version')) {
         d.splice(d.indexOf('version'), 1);
         const s = fs.statSync(path.resolve(folder, d[0]));
         if (s.isDirectory()) return await readCases(path.resolve(folder, d[0]), extra_config, args);
