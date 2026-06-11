@@ -50,8 +50,8 @@ print_connection_info() {
 
 Hydro_Judge worker is ready.
 
-Fill this in getcode -> 题目配置 -> 评测服务配置:
-  Hydro_Judge 地址: http://${host_ip}:${JUDGE_PORT}
+Fill this in getcode -> Problem Config -> Judge Service Config:
+  Hydro_Judge URL: http://${host_ip}:${JUDGE_PORT}
   Token: ${JUDGE_TOKEN}
 
 Local test:
@@ -119,6 +119,7 @@ WantedBy=multi-user.target
 EOF
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME" >/dev/null
+sudo systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true
 sudo systemctl restart "$SERVICE_NAME"
 
 echo "[4/4] Health checking worker..."

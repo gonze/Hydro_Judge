@@ -43,6 +43,23 @@ if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; th
 fi
 write_env_file
 
+SERVICE_STOPPED=0
+recover_service_on_error() {
+  local exit_code=$?
+  if [ "$SERVICE_STOPPED" = "1" ]; then
+    echo
+    echo "Update failed after ${SERVICE_NAME} was stopped. Restarting the existing service..." >&2
+    sudo systemctl start "$SERVICE_NAME" || true
+    sudo systemctl status "$SERVICE_NAME" --no-pager || true
+  fi
+  echo
+  echo "Update failed with exit code ${exit_code}." >&2
+  echo "If the error is GnuTLS recv error or network timeout, check the server network and rerun:" >&2
+  echo "  ./update_worker.sh" >&2
+  exit "$exit_code"
+}
+trap recover_service_on_error ERR
+
 if ! command -v sudo >/dev/null 2>&1; then
   echo "sudo is required. Please run this script on Ubuntu with sudo access." >&2
   exit 1
@@ -59,6 +76,7 @@ fi
 
 echo "[2/6] Stopping ${SERVICE_NAME}..."
 sudo systemctl stop "$SERVICE_NAME" || true
+SERVICE_STOPPED=1
 
 echo "[3/6] Pulling latest code..."
 git fetch origin
@@ -101,5 +119,7 @@ JUDGE_TOKEN="$JUDGE_TOKEN" \
 JUDGE_DATA_DIR="$JUDGE_DATA_DIR" \
 SERVICE_NAME="$SERVICE_NAME" \
 "$INSTALL_DIR/start_worker.sh"
+SERVICE_STOPPED=0
+trap - ERR
 
 echo "Hydro_Judge update completed. Connection info is shown above."
