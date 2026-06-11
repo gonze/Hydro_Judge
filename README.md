@@ -106,7 +106,7 @@ For the bundled local go-judge container, build the custom image first:
 test data and `testlib.h` can be read inside the sandbox:
 
 - `JUDGE_DATA_DIR`, default `/var/oj/judge-data`
-- `FILES_DIR`, default `~/.cache/hydro/files/judge`
+- `FILES_DIR`, default `/var/oj/files/judge`
 
 Useful options:
 

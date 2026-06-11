@@ -70,7 +70,7 @@ EOF
 load_env_file
 JUDGE_PORT="${JUDGE_PORT:-5000}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
-FILES_DIR="${FILES_DIR:-${HOME}/.cache/hydro/files/judge}"
+FILES_DIR="${FILES_DIR:-/var/oj/files/judge}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
 EXECUTION_HOST="${EXECUTION_HOST:-local}"
 GO_JUDGE_IMAGE="${GO_JUDGE_IMAGE:-criyle/go-judge:latest}"
@@ -122,6 +122,8 @@ if ! command -v sudo >/dev/null 2>&1; then
 fi
 
 echo "[1/4] Ensuring judge data and support files exist..."
+echo "JUDGE_DATA_DIR=${JUDGE_DATA_DIR}"
+echo "FILES_DIR=${FILES_DIR}"
 ensure_data_and_support_files
 
 if [ "$EXECUTION_HOST" = "local" ]; then

@@ -12,7 +12,9 @@ const config = {
     CONFIG_FILE: path.resolve(os.homedir(), '.config', 'hydro', 'judge.yaml'),
     LANGS_FILE: path.resolve(os.homedir(), '.config', 'hydro', IS_WINDOWS ? 'langs_win.yaml' : 'langs.yaml'),
     CACHE_DIR: path.resolve(os.homedir(), '.cache', 'hydro', 'judge'),
-    FILES_DIR: path.resolve(os.homedir(), '.cache', 'hydro', 'files', 'judge'),
+    FILES_DIR: IS_WINDOWS
+        ? path.resolve(os.homedir(), '.cache', 'hydro', 'files', 'judge')
+        : path.resolve('/var', 'oj', 'files', 'judge'),
     SYSTEM_MEMORY_LIMIT_MB: 1024,
     SYSTEM_TIME_LIMIT_MS: 16000,
     SYSTEM_PROCESS_LIMIT: 32,
