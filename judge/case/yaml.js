@@ -7,6 +7,7 @@ const readAutoCases = require('./auto');
 
 const fsp = fs.promises;
 
+
 function readConfigFile(folder, name, args) {
     if (args.config) return args.config;
     return fsp.readFile(path.resolve(folder, name)).then((buffer) => buffer.toString());
