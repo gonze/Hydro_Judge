@@ -27,6 +27,7 @@ write_env_file() {
 JUDGE_PORT=${JUDGE_PORT}
 JUDGE_TOKEN=${JUDGE_TOKEN}
 JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
+FILES_DIR=${FILES_DIR}
 SERVICE_NAME=${SERVICE_NAME}
 EXECUTION_HOST=${EXECUTION_HOST}
 EOF
@@ -67,6 +68,7 @@ EOF
 load_env_file
 JUDGE_PORT="${JUDGE_PORT:-5000}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
+FILES_DIR="${FILES_DIR:-${HOME}/.cache/hydro/files/judge}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
 EXECUTION_HOST="${EXECUTION_HOST:-local}"
 if [ -z "${JUDGE_TOKEN:-}" ] || [ "${JUDGE_TOKEN:-}" = "change-this-token" ]; then
@@ -77,6 +79,7 @@ write_env_file
 
 GO_JUDGE_IMAGE="${GO_JUDGE_IMAGE:-criyle/go-judge:latest}"
 GO_JUDGE_CONTAINER="${GO_JUDGE_CONTAINER:-go-judge}"
+TESTLIB_SOURCE="${INSTALL_DIR}/examples/testlib.h"
 
 if ! command -v sudo >/dev/null 2>&1; then
   echo "sudo is required. Please run this script on Ubuntu with sudo access." >&2
@@ -99,9 +102,21 @@ else
   fi
 fi
 
-echo "[2/4] Ensuring judge data directory exists..."
+echo "[2/4] Ensuring judge data and support files exist..."
 sudo mkdir -p "$JUDGE_DATA_DIR"
 sudo chown -R "$USER:$USER" "$(dirname "$JUDGE_DATA_DIR")"
+sudo mkdir -p "$FILES_DIR"
+if [ ! -f "${FILES_DIR}/testlib.h" ]; then
+  if [ ! -f "$TESTLIB_SOURCE" ]; then
+    echo "Missing ${TESTLIB_SOURCE}. Please keep examples/testlib.h with Hydro_Judge." >&2
+    exit 1
+  fi
+  sudo cp "$TESTLIB_SOURCE" "${FILES_DIR}/testlib.h"
+  echo "Installed testlib.h to ${FILES_DIR}/testlib.h"
+else
+  echo "testlib.h already exists at ${FILES_DIR}/testlib.h"
+fi
+sudo chown -R "$USER:$USER" "$FILES_DIR"
 
 echo "[3/4] Refreshing and starting ${SERVICE_NAME}..."
 sudo tee "/etc/systemd/system/${SERVICE_NAME}.service" >/dev/null <<EOF
@@ -116,6 +131,7 @@ WorkingDirectory=${INSTALL_DIR}
 Environment=JUDGE_PORT=${JUDGE_PORT}
 Environment=JUDGE_TOKEN=${JUDGE_TOKEN}
 Environment=JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
+Environment=FILES_DIR=${FILES_DIR}
 Environment=EXECUTION_HOST=${EXECUTION_HOST}
 ExecStart=/usr/bin/node judge/server.js
 Restart=always

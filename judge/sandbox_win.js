@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
@@ -74,6 +74,40 @@ async function copyInFile(filePath, content) {
     }
 }
 
+function readLinuxMemoryKb(pid) {
+    try {
+        const statusText = fs.readFileSync(`/proc/${pid}/status`, 'utf-8');
+        const hwm = /^VmHWM:\s+(\d+)\s+kB$/m.exec(statusText);
+        if (hwm) return parseInt(hwm[1], 10);
+        const rss = /^VmRSS:\s+(\d+)\s+kB$/m.exec(statusText);
+        if (rss) return parseInt(rss[1], 10);
+    } catch (e) {
+        // process may have already exited
+    }
+    return 0;
+}
+
+function readWindowsMemoryKb(pid) {
+    try {
+        const script = `(Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object -First 1).PeakWorkingSet64`;
+        const out = execFileSync('powershell.exe', ['-NoProfile', '-Command', script], {
+            windowsHide: true,
+            timeout: 1000,
+            encoding: 'utf-8',
+        }).trim();
+        const bytes = parseInt(out, 10);
+        return Number.isFinite(bytes) && bytes > 0 ? Math.round(bytes / 1024) : 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+function readProcessMemoryKb(pid) {
+    if (!pid) return 0;
+    if (process.platform === 'win32') return readWindowsMemoryKb(pid);
+    return readLinuxMemoryKb(pid);
+}
+
 async function run(execute, params = {}) {
     const {
         time_limit_ms = SYSTEM_TIME_LIMIT_MS,
@@ -140,6 +174,11 @@ async function run(execute, params = {}) {
                 },
                 windowsHide: true,
             });
+            const sampleMemory = () => {
+                memoryUsage = Math.max(memoryUsage, readProcessMemoryKb(child.pid));
+            };
+            const memoryTimer = setInterval(sampleMemory, 50);
+            sampleMemory();
 
             if (stdinContent) {
                 child.stdin.write(stdinContent);
@@ -172,6 +211,8 @@ async function run(execute, params = {}) {
 
             child.on('close', (code) => {
                 clearTimeout(timeout);
+                clearInterval(memoryTimer);
+                sampleMemory();
                 exitCode = code;
                 timeUsage = Date.now() - startTime;
                 resolve();
@@ -179,6 +220,7 @@ async function run(execute, params = {}) {
 
             child.on('error', (err) => {
                 clearTimeout(timeout);
+                clearInterval(memoryTimer);
                 spawnError = err.message;
                 stderrData += `Spawn error: ${err.message}`;
                 exitCode = -1;
