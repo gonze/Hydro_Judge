@@ -106,7 +106,7 @@ class JudgeContext {
         this.fail = this.fail.bind(this);
     }
 
-    next(data) {
+    next(data, caseId) {
         data.operation = 'next';
         data.rid = this.request.rid;
         data.time = data.time_ms || data.time;
@@ -119,7 +119,15 @@ class JudgeContext {
                 time: data.case.time_ms || data.case.time,
                 memory: data.case.memory_kb || data.case.memory,
                 message: data.judge_text || data.message || data.judgeText,
+                score: data.case.score || 0,
+                id: data.case.id || caseId,
+                input: data.case.input || '',
+                output: data.case.output || '',
+                max_score: data.case.max_score || 0,
             };
+            if (tasks[this.request.rid] && tasks[this.request.rid].task_id === this.taskId) {
+                tasks[this.request.rid].case_results.push(data.case);
+            }
         }
         if (tasks[this.request.rid] && tasks[this.request.rid].task_id === this.taskId && tasks[this.request.rid].status === 'running') {
             tasks[this.request.rid].progress = data;
@@ -132,6 +140,7 @@ class JudgeContext {
         data.rid = this.request.rid;
         data.time = data.time_ms || data.time;
         data.memory = data.memory_kb || data.memory;
+        data.case_results = data.case_results || tasks[this.request.rid].case_results || [];
         tasks[this.request.rid].result = data;
         tasks[this.request.rid].status = 'completed';
         tasks[this.request.rid].completed_at = new Date().toISOString();
@@ -262,6 +271,7 @@ async function handleJudgeSubmit(request, response) {
             status: 'running',
             progress: null,
             result: null,
+            case_results: [],
             received_at: new Date().toISOString(),
         };
 

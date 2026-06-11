@@ -47,6 +47,11 @@ function judgeCase(c) {
         const stdin = filename ? null : c.input;
         const stdout = path.resolve(ctx.tmpdir, `${c.id}.out`);
         const stderr = path.resolve(ctx.tmpdir, `${c.id}.err`);
+        const caseMaxScore = c.score !== undefined
+            ? c.score
+            : (ctxSubtask.subtask.type === 'sum'
+                ? ctxSubtask.subtask.score / Math.max(ctxSubtask.subtask.cases.length, 1)
+                : ctxSubtask.subtask.score);
         const executeCommand = ctx.execute.execute.replace(/\$\{name\}/g, 'code');
         log.info('Judge case start', {
             rid: ctx.rid,
@@ -89,7 +94,7 @@ function judgeCase(c) {
                     user_stderr: stderr,
                     checker: ctx.config.checker,
                     checker_type: ctx.config.checker_type,
-                    score: ctxSubtask.subtask.score,
+                    score: caseMaxScore,
                     detail: ctx.config.detail,
                 });
             }
@@ -107,11 +112,15 @@ function judgeCase(c) {
         ctx.next({
             status: STATUS_JUDGING,
             case: {
+                id: c.id,
                 status,
-                score: 0,
+                score,
+                max_score: caseMaxScore,
                 time_ms: time_usage_ms,
                 memory_kb: memory_usage_kb,
                 judge_text: message,
+                input: path.basename(c.input || ''),
+                output: path.basename(c.output || ''),
             },
             progress: Math.floor((c.id * 100) / ctx.config.count),
         }, c.id);
