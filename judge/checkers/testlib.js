@@ -8,17 +8,20 @@ const _compile = require('../compile');
 const fsp = fs.promises;
 
 async function check(config) {
-    const { stdout, stderr } = await run('${dir}/checker ${dir}/in ${dir}/user_out ${dir}/answer', {
+    const {
+        status, stdout, stderr, error,
+    } = await run('${dir}/checker ${dir}/in ${dir}/user_out ${dir}/answer', {
         copyIn: Object.assign({}, config.copyIn || {}, {
             in: { src: config.input },
             user_out: { src: config.user_stdout },
             answer: { src: config.output },
         }),
     });
+    const accepted = status === STATUS_ACCEPTED;
     return {
-        status: stderr === 'ok \n' ? STATUS_ACCEPTED : STATUS_WRONG_ANSWER,
-        score: stderr === 'ok \n' ? config.score : 0,
-        message: stdout,
+        status: accepted ? STATUS_ACCEPTED : STATUS_WRONG_ANSWER,
+        score: accepted ? config.score : 0,
+        message: [stderr, stdout, error].filter(Boolean).join('\n').trim(),
     };
 }
 
