@@ -189,7 +189,14 @@ exports.judge = async (ctx) => {
             for (const file of ctx.config.user_extra_files) {
                 copyIn[parseFilename(file)] = { src: file };
             }
-            return await compile(ctx.lang, ctx.code, 'code', copyIn, ctx.next);
+            return await compile(
+                ctx.lang,
+                ctx.code,
+                'code',
+                copyIn,
+                ctx.next,
+                { compile_flags: ctx.compile_flags },
+            );
         })(),
         (async () => {
             const runtimeCopyIn = {};

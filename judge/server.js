@@ -89,6 +89,7 @@ class JudgeContext {
         this.rid = request.rid;
         this.pid = request.pid;
         this.lang = request.lang;
+        this.compile_flags = request.compile_flags;
         this.code = request.code;
         this.data = request.data;
         this.data_id = request.data_id;
@@ -258,7 +259,7 @@ async function handleJudgeSubmit(request, response) {
     try {
         const data = await readJsonBody(request);
         const {
-            rid, pid, code, lang, data: requestedTestdataPath, data_id: dataId, time_limit, memory_limit,
+            rid, pid, code, lang, compile_flags, data: requestedTestdataPath, data_id: dataId, time_limit, memory_limit,
         } = data;
         const testdataPath = dataId ? resolveDataDir(dataId) : requestedTestdataPath;
         if (!rid || !code || !lang) throw new Error('Missing rid, code or lang');
@@ -277,7 +278,7 @@ async function handleJudgeSubmit(request, response) {
         };
 
         ctx = new JudgeContext({
-            rid, pid, lang, code, data: testdataPath, data_id: dataId,
+            rid, pid, lang, compile_flags, code, data: testdataPath, data_id: dataId,
         }, taskId);
 
         ctx.config = await readCases(

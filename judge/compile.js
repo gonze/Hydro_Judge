@@ -17,24 +17,51 @@ try {
     if (!global.Hydro) process.exit(1);
 }
 
-async function compile(lang, code, target, copyIn, next) {
+function normalizeLang(lang) {
+    const value = String(lang || '').toLowerCase();
+    return {
+        cpp: 'cc',
+        'c++': 'cc',
+        cxx: 'cc',
+        python: 'py3',
+        python3: 'py3',
+    }[value] || value;
+}
+
+function sanitizeCompileFlags(flags) {
+    const text = String(flags || '').trim();
+    if (!text) return '';
+    if (/[;&|`$<>\\\r\n]/.test(text)) throw new SystemError('Invalid compile flags');
+    return text;
+}
+
+function compileCommand(lang, info, target, options = {}) {
+    const baseCommand = info.compile.replace(/\$\{name\}/g, target);
+    const flags = sanitizeCompileFlags(options.compile_flags);
+    if (IS_WINDOWS || !flags || !['cc', 'cc98', 'cc11', 'cc17'].includes(lang)) return baseCommand;
+    return `/usr/bin/g++ ${flags} -o ${target} ${info.code_file} -lm`;
+}
+
+async function compile(lang, code, target, copyIn, next, options = {}) {
+    lang = normalizeLang(lang);
     if (!_langs[lang]) throw new SystemError(`Unsupported language: ${lang}`);
     const info = _langs[lang];
     const f = {};
     if (info.type === 'compiler') {
         copyIn[info.code_file] = { content: code };
         const cachedTargets = IS_WINDOWS ? [target, `${target}.exe`] : [target];
+        const command = compileCommand(lang, info, target, options);
         log.info('Compile start', {
             lang,
             target,
-            command: info.compile.replace(/\$\{name\}/g, target),
+            command,
             code_file: info.code_file,
             cachedTargets,
         });
         const {
             status, stdout, stderr, fileIds = {},
         } = await run(
-            info.compile.replace(/\$\{name\}/g, target),
+            command,
             { copyIn, copyOutCached: cachedTargets },
         );
         log.info('Compile finished', {
