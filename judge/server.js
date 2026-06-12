@@ -6,6 +6,7 @@ const fs = require('fs-extra');
 const readCases = require('./cases');
 const judge = require('./judge');
 const log = require('./log');
+const { TEMP_DIR } = require('./config');
 const { STATUS_COMPILE_ERROR, STATUS_SYSTEM_ERROR } = require('./status');
 
 const PORT = Number(process.env.JUDGE_PORT || 5000);
@@ -91,7 +92,7 @@ class JudgeContext {
         this.code = request.code;
         this.data = request.data;
         this.data_id = request.data_id;
-        this.tmpdir = path.resolve(os.tmpdir(), 'hydro', 'judge', request.rid);
+        this.tmpdir = path.resolve(TEMP_DIR, request.rid);
         fs.ensureDirSync(this.tmpdir);
         this.nextId = 1;
         this.nextWaiting = [];

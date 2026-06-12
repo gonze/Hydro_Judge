@@ -28,6 +28,7 @@ JUDGE_PORT=${JUDGE_PORT}
 JUDGE_TOKEN=${JUDGE_TOKEN}
 JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 FILES_DIR=${FILES_DIR}
+TEMP_DIR=${TEMP_DIR}
 SERVICE_NAME=${SERVICE_NAME}
 EXECUTION_HOST=${EXECUTION_HOST}
 GO_JUDGE_IMAGE=${GO_JUDGE_IMAGE}
@@ -71,6 +72,7 @@ load_env_file
 JUDGE_PORT="${JUDGE_PORT:-5000}"
 JUDGE_DATA_DIR="${JUDGE_DATA_DIR:-/var/oj/judge-data}"
 FILES_DIR="${FILES_DIR:-/var/oj/files/judge}"
+TEMP_DIR="${TEMP_DIR:-/var/oj/tmp/hydro/judge}"
 SERVICE_NAME="${SERVICE_NAME:-hydro-judge-worker}"
 EXECUTION_HOST="${EXECUTION_HOST:-local}"
 GO_JUDGE_IMAGE="${GO_JUDGE_IMAGE:-criyle/go-judge:latest}"
@@ -87,6 +89,7 @@ ensure_data_and_support_files() {
   sudo mkdir -p "$JUDGE_DATA_DIR"
   sudo chown -R "$USER:$USER" "$(dirname "$JUDGE_DATA_DIR")"
   sudo mkdir -p "$FILES_DIR"
+  sudo mkdir -p "$TEMP_DIR"
   if [ ! -f "${FILES_DIR}/testlib.h" ]; then
     if [ ! -f "$TESTLIB_SOURCE" ]; then
       echo "Missing ${TESTLIB_SOURCE}. Please keep examples/testlib.h with Hydro_Judge." >&2
@@ -98,6 +101,7 @@ ensure_data_and_support_files() {
     echo "testlib.h already exists at ${FILES_DIR}/testlib.h"
   fi
   sudo chown -R "$USER:$USER" "$FILES_DIR"
+  sudo chown -R "$USER:$USER" "$TEMP_DIR"
 }
 
 check_go_judge_toolchain() {
@@ -124,6 +128,7 @@ fi
 echo "[1/4] Ensuring judge data and support files exist..."
 echo "JUDGE_DATA_DIR=${JUDGE_DATA_DIR}"
 echo "FILES_DIR=${FILES_DIR}"
+echo "TEMP_DIR=${TEMP_DIR}"
 ensure_data_and_support_files
 
 if [ "$EXECUTION_HOST" = "local" ]; then
@@ -141,6 +146,7 @@ else
     --network host \
     -v "${JUDGE_DATA_DIR}:${JUDGE_DATA_DIR}:ro" \
     -v "${FILES_DIR}:${FILES_DIR}:ro" \
+    -v "${TEMP_DIR}:${TEMP_DIR}:rw" \
     "$GO_JUDGE_IMAGE" >/dev/null
   check_go_judge_toolchain
 fi
@@ -159,6 +165,7 @@ Environment=JUDGE_PORT=${JUDGE_PORT}
 Environment=JUDGE_TOKEN=${JUDGE_TOKEN}
 Environment=JUDGE_DATA_DIR=${JUDGE_DATA_DIR}
 Environment=FILES_DIR=${FILES_DIR}
+Environment=TEMP_DIR=${TEMP_DIR}
 Environment=EXECUTION_HOST=${EXECUTION_HOST}
 ExecStart=/usr/bin/node judge/server.js
 Restart=always

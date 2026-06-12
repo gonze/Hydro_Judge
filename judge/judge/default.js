@@ -38,6 +38,25 @@ function runtimeMessage(code, res) {
     return 'Runtime Error';
 }
 
+function readOutputPreview(file, maxLength = 1200) {
+    try {
+        if (!file || !fs.existsSync(file)) return '';
+        const text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        if (text.length <= maxLength) return text;
+        return `${text.slice(0, maxLength)}\n...`;
+    } catch (e) {
+        return '';
+    }
+}
+
+function wrongAnswerMessage(message, expected, actual) {
+    const parts = [];
+    if (message) parts.push(message);
+    if (expected) parts.push(`标准输出：\n${expected}`);
+    if (actual) parts.push(`选手输出：\n${actual}`);
+    return parts.join('\n\n');
+}
+
 function judgeCase(c) {
     return async (ctx, ctxSubtask) => {
         const { filename } = ctx.config;
@@ -80,6 +99,8 @@ function judgeCase(c) {
         }
         let message = '';
         let score = 0;
+        let expectedOutput = '';
+        let actualOutput = '';
         if (status === STATUS_ACCEPTED) {
             if (time_usage_ms > ctxSubtask.subtask.time_limit_ms) {
                 status = STATUS_TIME_LIMIT_EXCEEDED;
@@ -97,6 +118,11 @@ function judgeCase(c) {
                     score: caseMaxScore,
                     detail: ctx.config.detail,
                 });
+                if (status !== STATUS_ACCEPTED) {
+                    expectedOutput = readOutputPreview(c.output);
+                    actualOutput = readOutputPreview(stdout);
+                    message = wrongAnswerMessage(message, expectedOutput, actualOutput);
+                }
             }
         } else if (status === STATUS_RUNTIME_ERROR && code) {
             status = STATUS_RUNTIME_ERROR;
@@ -119,6 +145,8 @@ function judgeCase(c) {
                 time_ms: time_usage_ms,
                 memory_kb: memory_usage_kb,
                 judge_text: message,
+                expected_output: expectedOutput,
+                actual_output: actualOutput,
                 input: path.basename(c.input || ''),
                 output: path.basename(c.output || ''),
             },

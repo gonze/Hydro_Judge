@@ -19,7 +19,9 @@ const config = {
     SYSTEM_TIME_LIMIT_MS: 16000,
     SYSTEM_PROCESS_LIMIT: 32,
     RETRY_DELAY_SEC: 15,
-    TEMP_DIR: path.resolve(os.tmpdir(), 'hydro', 'judge'),
+    TEMP_DIR: IS_WINDOWS
+        ? path.resolve(os.tmpdir(), 'hydro', 'judge')
+        : path.resolve('/var', 'oj', 'tmp', 'hydro', 'judge'),
     EXECUTION_HOST: 'local',
     CONFIG: null,
     LANGS: null,

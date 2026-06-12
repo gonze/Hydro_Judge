@@ -51,6 +51,7 @@ The start script will:
 - use the local execution backend by default
 - recreate the local go-judge container when `EXECUTION_HOST` points to it
 - mount `JUDGE_DATA_DIR` and `FILES_DIR` into the go-judge container
+- mount `TEMP_DIR` into the go-judge container for checker input/output files
 - restart the `hydro-judge-worker` service
 - health check `http://127.0.0.1:5000/status`
 - print the `Hydro_Judge 地址` and `Token` that should be copied into getcode
@@ -107,6 +108,7 @@ test data and `testlib.h` can be read inside the sandbox:
 
 - `JUDGE_DATA_DIR`, default `/var/oj/judge-data`
 - `FILES_DIR`, default `/var/oj/files/judge`
+- `TEMP_DIR`, default `/var/oj/tmp/hydro/judge`
 
 Useful options:
 
