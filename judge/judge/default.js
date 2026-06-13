@@ -20,6 +20,17 @@ const Score = {
     min: Math.min,
 };
 
+/**
+ * 将总分按测试点数量整数分配，余数优先分配给前面的测试点
+ * 例：100分7个点 → 15+15+14+14+14+14+14
+ */
+function distributeScore(total, count, index) {
+    if (count <= 0) return 0;
+    const base = Math.floor(total / count);
+    const remainder = total - base * count;
+    return base + (index < remainder ? 1 : 0);
+}
+
 function pushJudgeMessage(ctx, message) {
     if (!message) return;
     if (!ctx.judge_messages) ctx.judge_messages = [];
@@ -57,7 +68,7 @@ function wrongAnswerMessage(message, expected, actual) {
     return parts.join('\n\n');
 }
 
-function judgeCase(c) {
+function judgeCase(c, caseIndex, caseCount) {
     return async (ctx, ctxSubtask) => {
         const { filename } = ctx.config;
         const { copyIn } = ctx.execute;
@@ -69,7 +80,7 @@ function judgeCase(c) {
         const caseMaxScore = c.score !== undefined
             ? c.score
             : (ctxSubtask.subtask.type === 'sum'
-                ? ctxSubtask.subtask.score / Math.max(ctxSubtask.subtask.cases.length, 1)
+                ? distributeScore(ctxSubtask.subtask.score, caseCount, caseIndex)
                 : ctxSubtask.subtask.score);
         const executeCommand = ctx.execute.execute.replace(/\$\{name\}/g, 'code');
         log.info('Judge case start', {
@@ -166,8 +177,12 @@ function judgeSubtask(subtask) {
                 : 0,
         };
         const cases = [];
-        for (const cid in subtask.cases) {
-            cases.push(ctx.queue.add(() => judgeCase(subtask.cases[cid])(ctx, ctxSubtask)));
+        const caseKeys = Object.keys(subtask.cases);
+        const caseCount = caseKeys.length;
+        let caseIdx = 0;
+        for (const cid of caseKeys) {
+            cases.push(ctx.queue.add(() => judgeCase(subtask.cases[cid], caseIdx, caseCount)(ctx, ctxSubtask)));
+            caseIdx++;
         }
         await Promise.all(cases);
         ctx.total_status = Math.max(ctx.total_status, ctxSubtask.status);
