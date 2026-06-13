@@ -16,7 +16,7 @@ const Score = {
     min: Math.min,
 };
 
-function judgeCase(c) {
+function judgeCase(c, subtaskIndex) {
     return async (ctx, ctxSubtask) => {
         ctx.executeInteractor.copyIn.stdans = { src: c.input };
         const [{ code, time_usage_ms, memory_usage_kb }, resInteractor] = await run([
@@ -56,13 +56,15 @@ function judgeCase(c) {
                 time_ms: time_usage_ms,
                 memory_kb: memory_usage_kb,
                 judge_text: message,
+                subtask: subtaskIndex,
+                id: c.id,
             },
             progress: Math.floor((c.id * 100) / ctx.config.count),
         });
     };
 }
 
-function judgeSubtask(subtask) {
+function judgeSubtask(subtask, subtaskIndex) {
     return async (ctx) => {
         subtask.type = subtask.type || 'min';
         const ctxSubtask = {
@@ -74,7 +76,7 @@ function judgeSubtask(subtask) {
         };
         const cases = [];
         for (const cid in subtask.cases) {
-            cases.push(ctx.queue.add(() => judgeCase(subtask.cases[cid])(ctx, ctxSubtask)));
+            cases.push(ctx.queue.add(() => judgeCase(subtask.cases[cid], subtaskIndex)(ctx, ctxSubtask)));
         }
         await Promise.all(cases);
         ctx.total_status = Math.max(ctx.total_status, ctxSubtask.status);
@@ -110,7 +112,7 @@ exports.judge = async (ctx) => {
     ctx.total_status = ctx.total_score = ctx.total_memory_usage_kb = ctx.total_time_usage_ms = 0;
     ctx.queue = new Queue({ concurrency: ctx.config.concurrency || 2 });
     for (const sid in ctx.config.subtasks) {
-        tasks.push(judgeSubtask(ctx.config.subtasks[sid])(ctx));
+        tasks.push(judgeSubtask(ctx.config.subtasks[sid], parseInt(sid))(ctx));
     }
     await Promise.all(tasks);
     ctx.stat.done = new Date();

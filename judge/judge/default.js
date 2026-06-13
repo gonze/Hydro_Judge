@@ -68,7 +68,7 @@ function wrongAnswerMessage(message, expected, actual) {
     return parts.join('\n\n');
 }
 
-function judgeCase(c, caseIndex, caseCount) {
+function judgeCase(c, caseIndex, caseCount, subtaskIndex) {
     return async (ctx, ctxSubtask) => {
         const { filename } = ctx.config;
         const { copyIn } = ctx.execute;
@@ -87,6 +87,7 @@ function judgeCase(c, caseIndex, caseCount) {
             rid: ctx.rid,
             pid: ctx.pid,
             case: c.id,
+            subtask: subtaskIndex,
             execute: executeCommand,
             copyIn: Object.keys(copyIn),
             filename: filename || '',
@@ -160,13 +161,14 @@ function judgeCase(c, caseIndex, caseCount) {
                 actual_output: actualOutput,
                 input: path.basename(c.input || ''),
                 output: path.basename(c.output || ''),
+                subtask: subtaskIndex,
             },
             progress: Math.floor((c.id * 100) / ctx.config.count),
         }, c.id);
     };
 }
 
-function judgeSubtask(subtask) {
+function judgeSubtask(subtask, subtaskIndex) {
     return async (ctx) => {
         subtask.type = subtask.type || 'min';
         const ctxSubtask = {
@@ -181,7 +183,7 @@ function judgeSubtask(subtask) {
         const caseCount = caseKeys.length;
         let caseIdx = 0;
         for (const cid of caseKeys) {
-            cases.push(ctx.queue.add(() => judgeCase(subtask.cases[cid], caseIdx, caseCount)(ctx, ctxSubtask)));
+            cases.push(ctx.queue.add(() => judgeCase(subtask.cases[cid], caseIdx, caseCount, subtaskIndex)(ctx, ctxSubtask)));
             caseIdx++;
         }
         await Promise.all(cases);
@@ -244,7 +246,7 @@ exports.judge = async (ctx) => {
     ctx.total_time_usage_ms = 0;
     ctx.judge_messages = [];
     ctx.queue = new Queue({ concurrency: ctx.config.concurrency || 2 });
-    for (const sid in ctx.config.subtasks) tasks.push(judgeSubtask(ctx.config.subtasks[sid])(ctx));
+    for (const sid in ctx.config.subtasks) tasks.push(judgeSubtask(ctx.config.subtasks[sid], parseInt(sid))(ctx));
     await Promise.all(tasks);
     ctx.stat.done = new Date();
     const judgeText = ctx.judge_messages.length ? ctx.judge_messages.join('\n') : JSON.stringify(ctx.stat);
