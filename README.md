@@ -2,6 +2,8 @@
 
 高效的信息学算法竞赛评测后端，支持子任务、自定义比较器和交互题。可运行 HTTP Worker 模式，作为 `getcode` 的局域网评测服务。
 
+> 移植自 [hydro-dev/HydroJudge](https://github.com/hydro-dev/HydroJudge)，基于原项目二次开发，主要增加了 HTTP Worker 模式并适配 Windows + Ubuntu 混合部署场景。
+
 ## 项目结构
 
 ```
