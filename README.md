@@ -99,7 +99,38 @@ Authorization: Bearer <JUDGE_TOKEN>
 
 ## 快速部署（Ubuntu）
 
+### 一键安装（推荐）
+
 在干净的 Ubuntu 服务器上执行：
+
+```bash
+curl -fsSL https://gitee.com/gonze/Hydro_Judge/raw/master/install.sh | bash
+```
+
+该命令会自动完成：
+1. 克隆（或更新）仓库到 `~/Hydro_Judge`
+2. 安装系统依赖（Node.js、npm、gcc/g++、Python3、Docker）
+3. 安装 Node 依赖、创建所需目录
+4. 写入 `hydro-judge-worker` systemd 服务并启动
+5. 构建包含编译器的自定义 go-judge 镜像（可跳过）
+6. 健康检查并输出 **Hydro_Judge 地址** 和 **Token**
+
+**安装完成后**，按提示输出的信息填入 getcode 的 **Problem Config → Judge Service Config** 即可。
+
+**常用可选参数**：
+
+```bash
+# 自定义安装目录
+INSTALL_DIR=/opt/hydro-judge curl -fsSL https://gitee.com/gonze/Hydro_Judge/raw/master/install.sh | bash
+
+# 使用 GitHub 仓库（国内访问慢时）
+REPO_URL=https://github.com/gonze/Hydro_Judge.git curl -fsSL https://gitee.com/gonze/Hydro_Judge/raw/master/install.sh | bash
+
+# 跳过自定义镜像构建（使用默认 criyle/go-judge 镜像）
+SKIP_BUILD=1 curl -fsSL https://gitee.com/gonze/Hydro_Judge/raw/master/install.sh | bash
+```
+
+### 手动安装（备选）
 
 ```bash
 git clone <仓库地址> Hydro_Judge
