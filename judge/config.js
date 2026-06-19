@@ -19,6 +19,8 @@ const config = {
     SYSTEM_TIME_LIMIT_MS: 16000,
     SYSTEM_PROCESS_LIMIT: 32,
     SYSTEM_STACK_LIMIT_MB: 1024,
+    SYSTEM_STACK_SOFT_LIMIT_MB: 1024,
+    SYSTEM_STACK_HARD_LIMIT_MB: 1024,
     RETRY_DELAY_SEC: 15,
     TEMP_DIR: IS_WINDOWS
         ? path.resolve(os.tmpdir(), 'hydro', 'judge')
@@ -61,6 +63,12 @@ if (process.env.FILES_DIR || argv.files) {
 }
 if (process.env.EXECUTION_HOST || argv.execute) {
     config.EXECUTION_HOST = process.env.EXECUTION_HOST || argv.execute;
+}
+if (process.env.SYSTEM_STACK_SOFT_LIMIT_MB) {
+    config.SYSTEM_STACK_SOFT_LIMIT_MB = Number(process.env.SYSTEM_STACK_SOFT_LIMIT_MB);
+}
+if (process.env.SYSTEM_STACK_HARD_LIMIT_MB) {
+    config.SYSTEM_STACK_HARD_LIMIT_MB = Number(process.env.SYSTEM_STACK_HARD_LIMIT_MB);
 }
 if (process.env.START_EXECUTOR_SERVER) {
     const args = (process.env.EXECUTOR_SERVER_ARGS || '').split(' ');

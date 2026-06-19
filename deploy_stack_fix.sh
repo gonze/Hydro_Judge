@@ -1,14 +1,14 @@
 #!/bin/bash
 # ============================================================
 # Hydro_Judge 栈限制部署脚本
-# 用途：部署修改后的 config.js 和 sandbox.js 到 Linux 服务器
+# 用途：部署修改后的文件到 Linux 服务器
 #       并重启 Hydro_Judge 服务
 # ============================================================
 
 set -e
 
 # 配置路径（请根据实际安装路径修改）
-HYDRO_JUDGE_DIR="${HYDRO_JUDGE_DIR:-$HOME/Hydro_Judge}"
+HYDRO_JUDGE_DIR="${HYDRO_JUDGE_DIR:-/opt/oj/Hydro_Judge}"
 REMOTE_HOST="${REMOTE_HOST:-192.168.110.198}"
 REMOTE_USER="${REMOTE_USER:-sloj}"
 
@@ -23,66 +23,55 @@ echo "远程主机: $REMOTE_USER@$REMOTE_HOST"
 echo "远程安装目录: $HYDRO_JUDGE_DIR"
 echo "=============================================="
 
-# 检查本地文件是否存在
-if [ ! -f "$LOCAL_HYDRO_DIR/judge/config.js" ]; then
-    echo "错误: 找不到本地 config.js 文件"
-    echo "  路径: $LOCAL_HYDRO_DIR/judge/config.js"
-    exit 1
-fi
+# 需要部署的文件列表
+FILES=(
+    "judge/config.js"
+    "judge/server.js"
+    "judge/sandbox.js"
+    "judge/sandbox_win.js"
+)
 
-if [ ! -f "$LOCAL_HYDRO_DIR/judge/sandbox.js" ]; then
-    echo "错误: 找不到本地 sandbox.js 文件"
-    echo "  路径: $LOCAL_HYDRO_DIR/judge/sandbox.js"
-    exit 1
-fi
+# 检查本地文件是否存在
+for file in "${FILES[@]}"; do
+    if [ ! -f "$LOCAL_HYDRO_DIR/$file" ]; then
+        echo "警告: 找不到本地 $file 文件，跳过"
+    fi
+done
 
 echo "[步骤 1] 备份远程服务器上的原文件..."
-ssh $REMOTE_USER@$REMOTE_HOST "
-    mkdir -p '$HYDRO_JUDGE_DIR/backup/$(date +%Y%m%d_%H%M%S)'
-    cp '$HYDRO_JUDGE_DIR/judge/config.js' '$HYDRO_JUDGE_DIR/backup/' 2>/dev/null || echo 'config.js 不存在，跳过备份'
-    cp '$HYDRO_JUDGE_DIR/judge/sandbox.js' '$HYDRO_JUDGE_DIR/backup/' 2>/dev/null || echo 'sandbox.js 不存在，跳过备份'
-    echo '备份完成'
-"
+BACKUP_DIR="$HYDRO_JUDGE_DIR/backup/$(date +%Y%m%d_%H%M%S)"
+ssh $REMOTE_USER@$REMOTE_HOST "mkdir -p '$BACKUP_DIR'"
+
+for file in "${FILES[@]}"; do
+    ssh $REMOTE_USER@$REMOTE_HOST "cp '$HYDRO_JUDGE_DIR/$file' '$BACKUP_DIR/' 2>/dev/null || echo '$file 不存在，跳过备份'"
+done
+echo "备份完成"
 
 echo "[步骤 2] 上传修改后的文件..."
-scp "$LOCAL_HYDRO_DIR/judge/config.js" $REMOTE_USER@$REMOTE_HOST:"$HYDRO_JUDGE_DIR/judge/config.js"
-scp "$LOCAL_HYDRO_DIR/judge/sandbox.js" $REMOTE_USER@$REMOTE_HOST:"$HYDRO_JUDGE_DIR/judge/sandbox.js"
+for file in "${FILES[@]}"; do
+    if [ -f "$LOCAL_HYDRO_DIR/$file" ]; then
+        echo "  上传 $file"
+        scp "$LOCAL_HYDRO_DIR/$file" $REMOTE_USER@$REMOTE_HOST:"$HYDRO_JUDGE_DIR/$file"
+    fi
+done
 
-echo "[步骤 3] 停止当前 Hydro_Judge 服务..."
-ssh $REMOTE_USER@$REMOTE_HOST "
-    pkill -f 'judge/server.js' 2>/dev/null || true
-    sleep 1
-    echo '服务已停止'
-"
+echo "[步骤 3] 停止所有评测服务..."
+ssh $REMOTE_USER@$REMOTE_HOST "cd '$HYDRO_JUDGE_DIR' && bash stop_worker.sh"
 
-echo "[步骤 4] 启动 Hydro_Judge 服务（含无栈限制配置）..."
-ssh $REMOTE_USER@$REMOTE_HOST "
-    cd '$HYDRO_JUDGE_DIR'
-    ulimit -s unlimited
-    JUDGE_PORT=5000 JUDGE_TOKEN='your-long-random-token' nohup node judge/server.js > judge.log 2>&1 &
-    sleep 2
-    echo '服务已启动，进程 ID:'
-    pgrep -f 'judge/server.js'
-"
+echo "[步骤 4] 启动所有评测服务..."
+ssh $REMOTE_USER@$REMOTE_HOST "cd '$HYDRO_JUDGE_DIR' && bash start_worker.sh"
 
-echo "[步骤 5] 验证服务状态..."
-sleep 3
-ssh $REMOTE_USER@$REMOTE_HOST "
-    curl -s http://localhost:5000/status 2>/dev/null || echo '服务未就绪'
-"
-
-echo "[步骤 6] 查看当前配置..."
+echo "[步骤 5] 查看当前栈限制配置..."
 ssh $REMOTE_USER@$REMOTE_HOST "
     echo 'config.js 中的栈限制配置:'
-    grep 'SYSTEM_STACK_LIMIT' '$HYDRO_JUDGE_DIR/judge/config.js'
-    echo
-    echo 'sandbox.js 中的 stackLimit 传递:'
-    grep 'stackLimit' '$HYDRO_JUDGE_DIR/judge/sandbox.js'
+    grep -E 'SYSTEM_STACK' '$HYDRO_JUDGE_DIR/judge/config.js' | head -5
     echo
     echo '当前进程栈限制:'
-    PID=\$(pgrep -f 'judge/server.js')
+    PID=\$(pgrep -f 'judge/server.js' | head -1)
     if [ -n \"\$PID\" ]; then
-        cat /proc/\$PID/limits 2>/dev/null | grep -i stack || echo '无法获取进程限制（可能需要 root 权限）'
+        cat /proc/\$PID/limits 2>/dev/null | grep -i stack || echo '无法获取进程限制'
+    else
+        echo '找不到 Hydro_Judge 进程'
     fi
 "
 
@@ -91,7 +80,7 @@ echo "部署完成！"
 echo "=============================================="
 echo ""
 echo "后续验证步骤："
-echo "  1. 提交一个需要大栈空间的 C++ 代码测试"
+echo "  1. 提交一个 getrlimit 测试代码验证栈限制"
 echo "  2. 检查 Hydro_Judge 日志: $HYDRO_JUDGE_DIR/judge.log"
 echo "  3. 访问 http://localhost:5000/status 查看服务状态"
 echo ""

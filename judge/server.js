@@ -3,10 +3,11 @@ const url = require('url');
 const path = require('path');
 const os = require('os');
 const fs = require('fs-extra');
+const { execFileSync } = require('child_process');
 const readCases = require('./cases');
 const judge = require('./judge');
 const log = require('./log');
-const { TEMP_DIR } = require('./config');
+const { TEMP_DIR, SYSTEM_STACK_SOFT_LIMIT_MB, SYSTEM_STACK_HARD_LIMIT_MB } = require('./config');
 const { STATUS_COMPILE_ERROR, STATUS_SYSTEM_ERROR } = require('./status');
 
 const PORT = Number(process.env.JUDGE_PORT || 5000);
@@ -18,6 +19,24 @@ const tasks = {};
 let taskSeq = 0;
 
 fs.ensureDirSync(JUDGE_DATA_DIR);
+
+function setStackLimit() {
+    if (os.platform() === 'win32') return;
+    const soft = SYSTEM_STACK_SOFT_LIMIT_MB;
+    const hard = SYSTEM_STACK_HARD_LIMIT_MB;
+    if (!soft && !hard) return;
+    const pid = process.pid;
+    const softArg = soft ? String(soft * 1024 * 1024) : 'unlimited';
+    const hardArg = hard ? String(hard * 1024 * 1024) : 'unlimited';
+    try {
+        execFileSync('prlimit', ['--pid', String(pid), '--stack', `${softArg}:${hardArg}`], { timeout: 2000 });
+        console.log(`Stack limit set: soft=${softArg} bytes, hard=${hardArg} bytes`);
+    } catch (e) {
+        console.warn(`Failed to set stack limit: ${e.message}`);
+    }
+}
+
+setStackLimit();
 
 function jsonResponse(response, statusCode, payload) {
     response.writeHead(statusCode, { 'Content-Type': 'application/json' });

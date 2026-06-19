@@ -186,10 +186,10 @@ async function run(execute, params = {}) {
             
             if (stackLimitEnabled && child.pid) {
                 try {
-                    const stackKb = stack_limit_mb * 1024;
+                    const stackBytes = stack_limit_mb * 1024 * 1024;
                     const { execFileSync } = require('child_process');
-                    execFileSync('prlimit', ['--pid', String(child.pid), '--stack', `${stackKb}:${stackKb}`], { timeout: 1000 });
-                    log.info('Sandbox stack limit set', { pid: child.pid, stack_kb: stackKb });
+                    execFileSync('prlimit', ['--pid', String(child.pid), '--stack', `${stackBytes}:unlimited`], { timeout: 1000 });
+                    log.info('Sandbox stack limit set', { pid: child.pid, stack_bytes: stackBytes });
                 } catch (e) {
                     log.warn('Sandbox stack limit failed', { error: e.message });
                 }
