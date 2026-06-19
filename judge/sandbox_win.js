@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const {
     SYSTEM_MEMORY_LIMIT_MB, SYSTEM_PROCESS_LIMIT, SYSTEM_TIME_LIMIT_MS,
+    SYSTEM_STACK_LIMIT_MB,
 } = require('./config');
 const { SystemError } = require('./error');
 const status = require('./status');
@@ -112,6 +113,7 @@ async function run(execute, params = {}) {
     const {
         time_limit_ms = SYSTEM_TIME_LIMIT_MS,
         memory_limit_mb = SYSTEM_MEMORY_LIMIT_MB,
+        stack_limit_mb = SYSTEM_STACK_LIMIT_MB,
         stdin,
         stdout: stdoutPath,
         stderr: stderrPath,
@@ -148,6 +150,7 @@ async function run(execute, params = {}) {
             copyOutCached,
             time_limit_ms,
             memory_limit_mb,
+            stack_limit_mb,
         });
 
         const stdinContent = await resolveInput(stdin);
@@ -164,16 +167,34 @@ async function run(execute, params = {}) {
 
         const startTime = Date.now();
 
+        const spawnOptions = {
+            cwd: tempDir,
+            env: {
+                ...process.env,
+                PATH: process.env.PATH,
+                HOME: tempDir,
+            },
+            windowsHide: true,
+        };
+
+        const isLinux = process.platform === 'linux';
+        const stackLimitEnabled = isLinux && stack_limit_mb;
+        log.info('Sandbox spawn config', { isLinux, stack_limit_mb, stackLimitEnabled });
+
         await new Promise((resolve) => {
-            const child = spawn(command, args, {
-                cwd: tempDir,
-                env: {
-                    ...process.env,
-                    PATH: process.env.PATH,
-                    HOME: tempDir,
-                },
-                windowsHide: true,
-            });
+            const child = spawn(command, args, spawnOptions);
+            
+            if (stackLimitEnabled && child.pid) {
+                try {
+                    const stackKb = stack_limit_mb * 1024;
+                    const { execFileSync } = require('child_process');
+                    execFileSync('prlimit', ['--pid', String(child.pid), '--stack', `${stackKb}:${stackKb}`], { timeout: 1000 });
+                    log.info('Sandbox stack limit set', { pid: child.pid, stack_kb: stackKb });
+                } catch (e) {
+                    log.warn('Sandbox stack limit failed', { error: e.message });
+                }
+            }
+            
             const sampleMemory = () => {
                 memoryUsage = Math.max(memoryUsage, readProcessMemoryKb(child.pid));
             };
