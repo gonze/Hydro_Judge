@@ -123,6 +123,7 @@ Environment=TEMP_DIR=${TEMP_DIR}
 Environment=EXECUTION_HOST=${EXECUTION_HOST}
 Environment=SYSTEM_STACK_SOFT_LIMIT_MB=1024
 Environment=SYSTEM_STACK_HARD_LIMIT_MB=1024
+LimitSTACK=infinity
 ExecStart=/usr/bin/node judge/server.js
 Restart=always
 RestartSec=3
