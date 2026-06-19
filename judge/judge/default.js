@@ -71,7 +71,7 @@ function wrongAnswerMessage(message, expected, actual) {
 function judgeCase(c, caseIndex, caseCount, subtaskIndex) {
     return async (ctx, ctxSubtask) => {
         const { filename } = ctx.config;
-        const { copyIn } = ctx.execute;
+        const copyIn = { ...ctx.execute.copyIn };
         if (ctx.config.filename) copyIn[`${filename}.in`] = { src: c.input };
         const copyOut = filename ? [`${filename}.out`] : [];
         const stdin = filename ? null : c.input;
