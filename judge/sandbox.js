@@ -8,7 +8,8 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
     const fs = require('fs-extra');
     const log = require('./log');
     const {
-        SYSTEM_MEMORY_LIMIT_MB, SYSTEM_PROCESS_LIMIT, SYSTEM_TIME_LIMIT_MS, EXECUTION_HOST,
+        SYSTEM_MEMORY_LIMIT_MB, SYSTEM_PROCESS_LIMIT, SYSTEM_TIME_LIMIT_MS,
+        SYSTEM_STACK_LIMIT_MB, EXECUTION_HOST,
     } = require('./config');
     const { SystemError } = require('./error');
     const status = require('./status');
@@ -35,6 +36,7 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
         time_limit_ms = SYSTEM_TIME_LIMIT_MS,
         memory_limit_mb = SYSTEM_MEMORY_LIMIT_MB,
         process_limit = SYSTEM_PROCESS_LIMIT,
+        stack_limit_mb = SYSTEM_STACK_LIMIT_MB,
         stdin, copyIn = {}, copyOut = [], copyOutCached = [],
     } = {}) {
         return {
@@ -48,6 +50,7 @@ if (platform() === 'win32' || EXECUTION_HOST === 'local') {
             cpuLimit: time_limit_ms * 1000 * 1000,
             realCpuLimit: time_limit_ms * 3000 * 1000,
             memoryLimit: memory_limit_mb * 1024 * 1024,
+            stackLimit: stack_limit_mb * 1024 * 1024,
             procLimit: process_limit,
             copyIn,
             copyOut,

@@ -18,6 +18,7 @@ const config = {
     SYSTEM_MEMORY_LIMIT_MB: 1024,
     SYSTEM_TIME_LIMIT_MS: 16000,
     SYSTEM_PROCESS_LIMIT: 32,
+    SYSTEM_STACK_LIMIT_MB: 1024,
     RETRY_DELAY_SEC: 15,
     TEMP_DIR: IS_WINDOWS
         ? path.resolve(os.tmpdir(), 'hydro', 'judge')
