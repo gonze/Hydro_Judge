@@ -175,13 +175,15 @@ Environment=EXECUTION_HOST=${EXECUTION_HOST}
 Environment=SYSTEM_STACK_SOFT_LIMIT_MB=1024
 Environment=SYSTEM_STACK_HARD_LIMIT_MB=1024
 LimitSTACK=infinity
-ExecStart=/usr/bin/node judge/server.js
+ExecStart=/bin/bash ${INSTALL_DIR}/run_worker.sh
 Restart=always
 RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 EOF
+chmod +x "${INSTALL_DIR}/run_worker.sh"
+sudo cp "${INSTALL_DIR}/run_worker.sh" "${INSTALL_DIR}/run_worker.sh"
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME" >/dev/null
 sudo systemctl stop "$SERVICE_NAME" >/dev/null 2>&1 || true

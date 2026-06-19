@@ -178,20 +178,25 @@ async function run(execute, params = {}) {
         };
 
         const isLinux = process.platform === 'linux';
-        const stackLimitEnabled = isLinux && stack_limit_mb;
-        log.info('Sandbox spawn config', { isLinux, stack_limit_mb, stackLimitEnabled });
+        const stackLimitEnabled = isLinux;
+        log.info('Sandbox spawn config', { isLinux, stackLimitEnabled });
 
         await new Promise((resolve) => {
             const child = spawn(command, args, spawnOptions);
             
             if (stackLimitEnabled && child.pid) {
                 try {
-                    const stackBytes = stack_limit_mb * 1024 * 1024;
                     const { execFileSync } = require('child_process');
-                    execFileSync('prlimit', ['--pid', String(child.pid), '--stack', `${stackBytes}:unlimited`], { timeout: 1000 });
-                    log.info('Sandbox stack limit set', { pid: child.pid, stack_bytes: stackBytes });
+                    execFileSync('prlimit', ['--pid', String(child.pid), '--stack', 'unlimited:unlimited'], { timeout: 1000 });
+                    log.info('Sandbox stack limit set to unlimited', { pid: child.pid });
                 } catch (e) {
-                    log.warn('Sandbox stack limit failed', { error: e.message });
+                    try {
+                        const { execFileSync } = require('child_process');
+                        execFileSync('prlimit', ['--pid', String(child.pid), '--stack', '1073741824:unlimited'], { timeout: 1000 });
+                        log.info('Sandbox stack limit set to 1GB', { pid: child.pid });
+                    } catch (e2) {
+                        log.warn('Sandbox stack limit failed', { error: e2.message });
+                    }
                 }
             }
             

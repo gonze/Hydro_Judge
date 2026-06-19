@@ -22,17 +22,18 @@ fs.ensureDirSync(JUDGE_DATA_DIR);
 
 function setStackLimit() {
     if (os.platform() === 'win32') return;
-    const soft = SYSTEM_STACK_SOFT_LIMIT_MB;
-    const hard = SYSTEM_STACK_HARD_LIMIT_MB;
-    if (!soft && !hard) return;
-    const pid = process.pid;
-    const softArg = soft ? String(soft * 1024 * 1024) : 'unlimited';
-    const hardArg = hard ? String(hard * 1024 * 1024) : 'unlimited';
     try {
-        execFileSync('prlimit', ['--pid', String(pid), '--stack', `${softArg}:${hardArg}`], { timeout: 2000 });
-        console.log(`Stack limit set: soft=${softArg} bytes, hard=${hardArg} bytes`);
+        const { execFileSync } = require('child_process');
+        execFileSync('prlimit', ['--pid', String(process.pid), '--stack', 'unlimited:unlimited'], { timeout: 2000 });
+        console.log('Stack limit set: unlimited');
     } catch (e) {
-        console.warn(`Failed to set stack limit: ${e.message}`);
+        try {
+            const { execFileSync } = require('child_process');
+            execFileSync('prlimit', ['--pid', String(process.pid), '--stack', '1073741824:unlimited'], { timeout: 2000 });
+            console.log('Stack limit set: 1GB');
+        } catch (e2) {
+            console.warn('Failed to set stack limit:', e2.message);
+        }
     }
 }
 
