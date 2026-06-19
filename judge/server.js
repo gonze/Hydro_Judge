@@ -22,18 +22,13 @@ fs.ensureDirSync(JUDGE_DATA_DIR);
 
 function setStackLimit() {
     if (os.platform() === 'win32') return;
+    const pid = process.pid;
     try {
         const { execFileSync } = require('child_process');
-        execFileSync('prlimit', ['--pid', String(process.pid), '--stack', 'unlimited:unlimited'], { timeout: 2000 });
+        execFileSync('prlimit', ['--pid', String(pid), '--stack=unlimited:unlimited'], { timeout: 2000 });
         console.log('Stack limit set: unlimited');
     } catch (e) {
-        try {
-            const { execFileSync } = require('child_process');
-            execFileSync('prlimit', ['--pid', String(process.pid), '--stack', '1073741824:unlimited'], { timeout: 2000 });
-            console.log('Stack limit set: 1GB');
-        } catch (e2) {
-            console.warn('Failed to set stack limit:', e2.message);
-        }
+        console.warn('Failed to set stack limit:', e.message);
     }
 }
 
